@@ -2,10 +2,11 @@ body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
     margin: 0;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
   }
   
   .container {
@@ -17,6 +18,7 @@ body {
     max-width: 400px;
     text-align: center;
     overflow-wrap: break-word;
+    margin: 0;
   }
   
   h2 {
@@ -37,7 +39,18 @@ body {
     transition: background-color 0.3s ease;
     width: 100%;
     box-sizing: border-box; 
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+
+  .connected-address {
+    overflow-wrap: break-word;
+    word-break: break-all;
+    max-width: 100%;
+    white-space: normal;
+    font-size: 0.9rem;
+}
   
   button:hover {
     background-color: #0056b3;
@@ -71,8 +84,8 @@ body {
     font-size: 1.1rem;
     color: #555;
     padding: 0.5rem;
-    word-wrap: break-word; /* Ensures long words break within the box */
-    white-space: pre-wrap; /* Preserves line breaks and wraps long text */
+    word-wrap: break-word;
+    white-space: pre-wrap;
   }
   
   .status-success {
@@ -85,3 +98,33 @@ body {
     font-weight: bold;
   }
   
+  .rules-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.rules-section h3 {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.rules-section label {
+    display: inline-block;
+    width: 100px;
+    margin-right: 0.5rem;
+    font-weight: bold;
+}
+
+.rules-section select,
+.rules-section input[type="number"] {
+    width: calc(50% - 1rem);
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}

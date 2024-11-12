@@ -10,14 +10,20 @@ const Quest = () => {
     const [inputAddress, setInputAddress] = useState("");
     const [status, setStatus] = useState("");
 
-    // Function to connect or switch wallet
+    // State for custom rules
+    const [balanceAmount, setBalanceAmount] = useState(10000);
+    const [balanceOperator, setBalanceOperator] = useState("greater-than-equal");
+    const [transferCount, setTransferCount] = useState(5);
+    const [transferOperator, setTransferOperator] = useState("greater-than-equal");
+
+    // Function to connect wallet
     const connectWallet = async () => {
         if (window.ethereum) {
             try {
                 const provider = new BrowserProvider(window.ethereum);
                 const accounts = await provider.send("eth_requestAccounts", []);
                 setUserAddress(accounts[0]);
-                setStatus(""); // Clear any status when switching accounts
+                setStatus("");
             } catch (error) {
                 console.error("Error connecting wallet:", error);
             }
@@ -26,29 +32,20 @@ const Quest = () => {
         }
     };
 
-    // Function to handle switching wallets by resetting the account
+    // Function to switch wallets by resetting the account
     const handleSwitchWallet = async () => {
-      try {
-          // Clear the current address
-          setUserAddress("");
-  
-          // Force MetaMask to open the account selection modal
-          const provider = new BrowserProvider(window.ethereum);
-          const accounts = await provider.send("wallet_requestPermissions", [
-              { eth_accounts: {} }
-          ]);
-          
-          console.log(accounts); 
-          connectWallet();
-
-      } catch (error) {
-          console.error("Error switching wallet:", error);
-          setStatus("An error occurred. Please try again.");
-      }
+        try {
+            const provider = new BrowserProvider(window.ethereum);
+            await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+            connectWallet();
+        } catch (error) {
+            console.error("Error switching wallet:", error);
+            setStatus("An error occurred while switching wallet. Please try again.");
+        }
     };
 
-    // Function to check quest eligibility
-    const checkQuestEligibility = async (addressToCheck : string) => {
+    // Function to check eligibility
+    const checkQuestEligibility = async (addressToCheck: string) => {
         if (!addressToCheck || !/^(0x)?[0-9a-fA-F]{40}$/.test(addressToCheck)) {
             setStatus("Please enter a valid wallet address.");
             return;
@@ -61,11 +58,13 @@ const Quest = () => {
             // Check token balance
             const balance = await contract.balanceOf?.(addressToCheck);
             if (balance === undefined) {
-            setStatus("Error: Contract method 'balanceOf' is undefined.");
-            return;
+                setStatus("Error: Contract method 'balanceOf' is undefined.");
+                return;
             }
             const formattedBalance = parseFloat(formatUnits(balance, 18));
-            const hasSufficientBalance = formattedBalance >= 10000;
+
+            // Apply balance rule
+            const balanceEligible = checkRule(formattedBalance, balanceAmount, balanceOperator);
 
             // Check transfer count in the last 1000 blocks
             const currentBlock = await provider.getBlockNumber();
@@ -76,25 +75,43 @@ const Quest = () => {
             }
 
             const events = await contract.queryFilter(filter, currentBlock - 1000, currentBlock);
-            const transferCount = events.length;
-            const hasSufficientTransfers = transferCount >= 5;
+            const transferCountActual = events.length;
+
+            // Apply transfer count rule
+            const transfersEligible = checkRule(transferCountActual, transferCount, transferOperator);
 
             // Determine eligibility and set detailed status
-            if (hasSufficientBalance && hasSufficientTransfers) {
+            if (balanceEligible && transfersEligible) {
                 setStatus(`Address ${addressToCheck} is eligible for the quest!`);
             } else {
                 let failureReason = `Address ${addressToCheck} is not eligible for the quest due to:`;
-                if (!hasSufficientBalance) {
-                    failureReason += `\n- Insufficient balance (requires 10,000 tokens, has ${formattedBalance})`;
+                if (!balanceEligible) {
+                    failureReason += `\n- Balance rule not met (requires ${balanceOperator} ${balanceAmount}, has ${formattedBalance})`;
                 }
-                if (!hasSufficientTransfers) {
-                    failureReason += `\n- Insufficient transfer count (requires 5 transfers, has ${transferCount})`;
+                if (!transfersEligible) {
+                    failureReason += `\n- Transfer rule not met (requires ${transferOperator} ${transferCount}, has ${transferCountActual})`;
                 }
                 setStatus(failureReason);
             }
         } catch (error) {
             console.error("Error checking eligibility:", error);
             setStatus("An error occurred. Please try again.");
+        }
+    };
+
+    // Helper function to evaluate rules
+    const checkRule = (value: number, target: number, operator: string) => {
+        switch (operator) {
+            case "greater-than-equal":
+                return value >= target;
+            case "less-than-equal":
+                return value <= target;
+            case "greater-than":
+                return value > target;
+            case "less-than":
+                return value < target;
+            default:
+                return false;
         }
     };
 
@@ -106,7 +123,7 @@ const Quest = () => {
         checkQuestEligibility(userAddress);
     };
 
-    const handleInputAddressCheck = (e: React.FormEvent) => {
+    const handleInputAddressCheck = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         checkQuestEligibility(inputAddress);
     };
@@ -117,10 +134,14 @@ const Quest = () => {
 
             {/* Connect or Switch MetaMask Wallet */}
             <button onClick={connectWallet}>
-                {userAddress ? `Connected: ${userAddress}` : "Connect Wallet"}
+                {userAddress ? (
+                    <span className="connected-address">Connected: {userAddress}</span>
+                ) : (
+                    "Connect Wallet"
+                    )}
             </button>
             {userAddress && (
-                <button onClick={handleSwitchWallet} style={{ marginTop: '0.5rem', backgroundColor: '#28a745' }}>
+                <button onClick={handleSwitchWallet} style={{ marginTop: '1rem' }}>
                     Switch Wallet
                 </button>
             )}
@@ -140,6 +161,41 @@ const Quest = () => {
                 />
                 <button type="submit">Check Eligibility for Entered Address</button>
             </form>
+
+            {/* Custom Rule Settings */}
+            <div className="rules-section">
+                <h3>Set Custom Rules</h3>
+                <div>
+                    <label>Balance:</label>
+                    <select value={balanceOperator} onChange={(e) => setBalanceOperator(e.target.value)}>
+                        <option value="greater-than-equal">{'≥'}</option>
+                        <option value="less-than-equal">{'≤'}</option>
+                        <option value="greater-than">{'>'}</option>
+                        <option value="less-than">{'<'}</option>
+                    </select>
+                    <input
+                        type="number"
+                        value={balanceAmount}
+                        onChange={(e) => setBalanceAmount(Number(e.target.value))}
+                    />
+                </div>
+
+                <div>
+                    <label>Transfer Count:</label>
+                    <select value={transferOperator} onChange={(e) => setTransferOperator(e.target.value)}>
+                        <option value="greater-than-equal">{'≥'}</option>
+                        <option value="less-than-equal">{'≤'}</option>
+                        <option value="greater-than">{'>'}</option>
+                        <option value="less-than">{'<'}</option>
+                    </select>
+                    <input
+                        type="number"
+                        min={0}
+                        value={transferCount}
+                        onChange={(e) => setTransferCount(Number(e.target.value))}
+                    />
+                </div>
+            </div>
 
             <p className={status.includes("eligible") ? "status-success" : "status-failure"}>{status}</p>
         </div>
