@@ -1,67 +1,149 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "~/app/_components/post";
-import { getServerAuthSession } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
+import { useState } from 'react';
+import { Contract, BrowserProvider, formatUnits } from 'ethers';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../app/config.js';
+import './page.css';
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-  const session = await getServerAuthSession();
+const Quest = () => {
+    const [userAddress, setUserAddress] = useState("");
+    const [inputAddress, setInputAddress] = useState("");
+    const [status, setStatus] = useState("");
 
-  void api.post.getLatest.prefetch();
+    // Function to connect or switch wallet
+    const connectWallet = async () => {
+        if (window.ethereum) {
+            try {
+                const provider = new BrowserProvider(window.ethereum);
+                const accounts = await provider.send("eth_requestAccounts", []);
+                setUserAddress(accounts[0]);
+                setStatus(""); // Clear any status when switching accounts
+            } catch (error) {
+                console.error("Error connecting wallet:", error);
+            }
+        } else {
+            alert("MetaMask not detected. Please install MetaMask to connect.");
+        }
+    };
 
-  return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
+    // Function to handle switching wallets by resetting the account
+    const handleSwitchWallet = async () => {
+      try {
+          // Clear the current address
+          setUserAddress("");
+  
+          // Force MetaMask to open the account selection modal
+          const provider = new BrowserProvider(window.ethereum);
+          const accounts = await provider.send("wallet_requestPermissions", [
+              { eth_accounts: {} }
+          ]);
+          
+          console.log(accounts); 
+          connectWallet();
 
-            <div className="flex flex-col items-center justify-center gap-4">
-              <p className="text-center text-2xl text-white">
-                {session && <span>Logged in as {session.user?.name}</span>}
-              </p>
-              <Link
-                href={session ? "/api/auth/signout" : "/api/auth/signin"}
-                className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
-              >
-                {session ? "Sign out" : "Sign in"}
-              </Link>
-            </div>
-          </div>
+      } catch (error) {
+          console.error("Error switching wallet:", error);
+          setStatus("An error occurred. Please try again.");
+      }
+    };
 
-          {session?.user && <LatestPost />}
+    // Function to check quest eligibility
+    const checkQuestEligibility = async (addressToCheck : string) => {
+        if (!addressToCheck || !/^(0x)?[0-9a-fA-F]{40}$/.test(addressToCheck)) {
+            setStatus("Please enter a valid wallet address.");
+            return;
+        }
+
+        try {
+            const provider = new BrowserProvider(window.ethereum);
+            const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+            // Check token balance
+            const balance = await contract.balanceOf?.(addressToCheck);
+            if (balance === undefined) {
+            setStatus("Error: Contract method 'balanceOf' is undefined.");
+            return;
+            }
+            const formattedBalance = parseFloat(formatUnits(balance, 18));
+            const hasSufficientBalance = formattedBalance >= 10000;
+
+            // Check transfer count in the last 1000 blocks
+            const currentBlock = await provider.getBlockNumber();
+            const filter = contract.filters.Transfer?.(addressToCheck, null);
+            if (!filter) {
+                setStatus("Error: Transfer event filter is undefined.");
+                return;
+            }
+
+            const events = await contract.queryFilter(filter, currentBlock - 1000, currentBlock);
+            const transferCount = events.length;
+            const hasSufficientTransfers = transferCount >= 5;
+
+            // Determine eligibility and set detailed status
+            if (hasSufficientBalance && hasSufficientTransfers) {
+                setStatus(`Address ${addressToCheck} is eligible for the quest!`);
+            } else {
+                let failureReason = `Address ${addressToCheck} is not eligible for the quest due to:`;
+                if (!hasSufficientBalance) {
+                    failureReason += `\n- Insufficient balance (requires 10,000 tokens, has ${formattedBalance})`;
+                }
+                if (!hasSufficientTransfers) {
+                    failureReason += `\n- Insufficient transfer count (requires 5 transfers, has ${transferCount})`;
+                }
+                setStatus(failureReason);
+            }
+        } catch (error) {
+            console.error("Error checking eligibility:", error);
+            setStatus("An error occurred. Please try again.");
+        }
+    };
+
+    const handleConnectedWalletCheck = () => {
+        if (!userAddress) {
+            setStatus("Please connect your wallet first.");
+            return;
+        }
+        checkQuestEligibility(userAddress);
+    };
+
+    const handleInputAddressCheck = (e: React.FormEvent) => {
+        e.preventDefault();
+        checkQuestEligibility(inputAddress);
+    };
+
+    return (
+        <div className="container">
+            <h2>Check Quest Eligibility</h2>
+
+            {/* Connect or Switch MetaMask Wallet */}
+            <button onClick={connectWallet}>
+                {userAddress ? `Connected: ${userAddress}` : "Connect Wallet"}
+            </button>
+            {userAddress && (
+                <button onClick={handleSwitchWallet} style={{ marginTop: '0.5rem', backgroundColor: '#28a745' }}>
+                    Switch Wallet
+                </button>
+            )}
+
+            {/* Check Eligibility for Connected Wallet */}
+            <button onClick={handleConnectedWalletCheck} disabled={!userAddress} style={{ marginTop: '1rem' }}>
+                Check Eligibility for Connected Wallet
+            </button>
+
+            {/* Form to Enter Any Address Manually */}
+            <form onSubmit={handleInputAddressCheck} style={{ marginTop: '1rem' }}>
+                <input
+                    type="text"
+                    placeholder="Enter any wallet address"
+                    value={inputAddress}
+                    onChange={(e) => setInputAddress(e.target.value)}
+                />
+                <button type="submit">Check Eligibility for Entered Address</button>
+            </form>
+
+            <p className={status.includes("eligible") ? "status-success" : "status-failure"}>{status}</p>
         </div>
-      </main>
-    </HydrateClient>
-  );
-}
+    );
+};
+
+export default Quest;
