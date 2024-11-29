@@ -317,3 +317,45 @@ select {
       justify-content: center;
   }
 }
+.rules-section {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.rule-row:last-child {
+  margin-bottom: 0;
+}
+
+.rule-row label {
+  flex: 0 0 120px;
+  font-weight: 600;
+  color: #444;
+}
+
+.rule-row select,
+.rule-row input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.rule-row input {
+  min-width: 80px;
+}
+
+.no-tokens-message {
+  text-align: center;
+  color: #666;
+  padding: 1rem;
+}

@@ -10,6 +10,67 @@ interface Token {
     abi: string;
 }
 
+interface AbiFunction {
+    name: string;
+    type: string;
+    inputs: { type: string; name: string }[];
+    outputs: { type: string }[];
+    stateMutability?: string;
+}
+
+interface Rule {
+    functionName: string;
+    operator: string;
+    value: number;
+    displayName: string;
+}
+
+const parseAbiForRules = (abi: string): AbiFunction[] => {
+    try {
+        const parsedAbi = JSON.parse(abi);
+        return parsedAbi.filter((item: AbiFunction) => {
+            // Basic function check
+            if (item.type !== 'function') return false;
+
+            // Must be view or pure function
+            if (item.stateMutability !== 'view' && item.stateMutability !== 'pure') return false;
+
+            // Check outputs
+            if (!item.outputs || item.outputs.length === 0) return false;
+            const outputType = item.outputs[0]?.type;
+            if (!outputType) return false;
+
+            // Check if output is numeric
+            const isNumericOutput = [
+                'uint256', 'uint128', 'uint64', 'uint32', 'uint16', 'uint8',
+                'int256', 'int128', 'int64', 'int32', 'int16', 'int8',
+                'uint', 'int'
+            ].includes(outputType);
+
+            // Skip string-returning functions
+            if (!isNumericOutput || outputType === 'string') return false;
+
+            // Check inputs - must have 0 or 1 input
+            if (!item.inputs) return true;
+            if (item.inputs.length === 0) return true;
+            
+            // If 1 input, it must be an address
+            return item.inputs.length === 1 && item.inputs[0]?.type === 'address';
+        });
+    } catch (error) {
+        console.error('Error parsing ABI:', error);
+        return [];
+    }
+};
+
+// Function to format function name for display
+const formatFunctionName = (name: string): string => {
+    return name
+        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .trim();
+};
+
 const Quest = () => {
     const [userAddress, setUserAddress] = useState("");
     const [inputAddress, setInputAddress] = useState("");
@@ -30,6 +91,7 @@ const Quest = () => {
     const [balanceOperator, setBalanceOperator] = useState("greater-than-equal");
     const [transferCount, setTransferCount] = useState(5);
     const [transferOperator, setTransferOperator] = useState("greater-than-equal");
+    const [rules, setRules] = useState<Rule[]>([]);
 
     // Load tokens from localStorage on component mount
     useEffect(() => {
@@ -48,91 +110,90 @@ const Quest = () => {
         localStorage.setItem('tokens', JSON.stringify(tokens));
     }, [tokens]);
 
+    useEffect(() => {
+        if (selectedToken) {
+            const eligibleFunctions = parseAbiForRules(selectedToken.abi);
+            const newRules = eligibleFunctions.map(func => ({
+                functionName: func.name,
+                operator: 'greater-than-equal',
+                value: 0,
+                displayName: formatFunctionName(func.name)
+            }));
+            setRules(newRules);
+        } else {
+            setRules([]);
+        }
+    }, [selectedToken]);
+
     const addToken = () => {
-      try {
-          // Validate inputs
-          if (!newToken.name || !newToken.address || !newToken.abi) {
-              setStatus("Please fill in all token details");
-              return;
-          }
-  
-          // Validate address format
-          if (!/^(0x)?[0-9a-fA-F]{40}$/.test(newToken.address)) {
-              setStatus("Invalid contract address format");
-              return;
-          }
-  
-          // Validate ABI is valid JSON and has required methods
-          let parsedAbi;
-          try {
-              parsedAbi = JSON.parse(newToken.abi);
-              
-              // Check if ABI is an array
-              if (!Array.isArray(parsedAbi)) {
-                  setStatus("Invalid ABI format: must be an array of function descriptions");
-                  return;
-              }
-  
-              // Check for balanceOf function
-              const hasBalanceOf = parsedAbi.some(item => 
-                  item.type === 'function' &&
-                  item.name === 'balanceOf' &&
-                  item.inputs?.length === 1 &&
-                  item.inputs[0].type === 'address' &&
-                  item.outputs?.length === 1 &&
-                  (item.outputs[0].type === 'uint256' || item.outputs[0].type === 'uint')
-              );
-  
-              // Check for Transfer event
-              const hasTransfer = parsedAbi.some(item =>
-                  item.type === 'event' &&
-                  item.name === 'Transfer' &&
-                  item.inputs?.length === 3 &&
-                  item.inputs[0].type === 'address' &&
-                  item.inputs[1].type === 'address' &&
-                  (item.inputs[2].type === 'uint256' || item.inputs[2].type === 'uint')
-              );
-  
-              if (!hasBalanceOf) {
-                  setStatus("ABI must include a valid 'balanceOf(address)' function that returns uint256");
-                  return;
-              }
-  
-              if (!hasTransfer) {
-                  setStatus("ABI must include a valid 'Transfer(address,address,uint256)' event");
-                  return;
-              }
-          } catch (error) {
-              setStatus("Invalid ABI JSON format. Please check the JSON structure.");
-              return;
-          }
-  
-          // Check for duplicate names or addresses
-          if (tokens.some(token => 
-              token.name.toLowerCase() === newToken.name.toLowerCase() ||
-              token.address.toLowerCase() === newToken.address.toLowerCase()
-          )) {
-              setStatus("A token with this name or address already exists");
-              return;
-          }
-  
-          // Add new token
-          const updatedTokens = [...tokens, {
-              ...newToken,
-              address: newToken.address.toLowerCase(), // Normalize address
-              abi: JSON.stringify(parsedAbi) // Store normalized ABI
-          }];
-          
-          setTokens(updatedTokens);
-          setShowAddToken(false);
-          setNewToken({ name: '', address: '', abi: '' });
-          setSelectedToken(newToken); // Automatically select the newly added token
-          setStatus("Token added successfully!");
-      } catch (error: any) {
-          console.error("Error adding token:", error);
-          setStatus(`Error adding token: ${error.message}`);
-      }
-  };
+        try {
+            // Validate inputs
+            if (!newToken.name || !newToken.address || !newToken.abi) {
+                setStatus("Please fill in all token details");
+                return;
+            }
+    
+            if (!/^(0x)?[0-9a-fA-F]{40}$/.test(newToken.address)) {
+                setStatus("Invalid contract address format");
+                return;
+            }
+    
+            // Parse and validate ABI
+            let parsedAbi;
+            try {
+                parsedAbi = JSON.parse(newToken.abi);
+                if (!Array.isArray(parsedAbi)) {
+                    setStatus("Invalid ABI format: must be an array of function descriptions");
+                    return;
+                }
+    
+                // Generate rules from ABI
+                const eligibleFunctions = parseAbiForRules(newToken.abi);
+                const newRules: Rule[] = eligibleFunctions.map(func => ({
+                    functionName: func.name,
+                    operator: 'greater-than-equal',
+                    value: 0,
+                    displayName: formatFunctionName(func.name)
+                }));
+    
+                // Check for duplicate tokens
+                if (tokens.some(token => 
+                    token.name.toLowerCase() === newToken.name.toLowerCase() ||
+                    token.address.toLowerCase() === newToken.address.toLowerCase()
+                )) {
+                    setStatus("A token with this name or address already exists");
+                    return;
+                }
+    
+                // Add new token
+                const updatedTokens = [...tokens, {
+                    ...newToken,
+                    address: newToken.address.toLowerCase(),
+                    abi: JSON.stringify(parsedAbi)
+                }];
+                
+                setTokens(updatedTokens);
+                setShowAddToken(false);
+                setNewToken({ name: '', address: '', abi: '' });
+                
+                // Fix for the TypeScript error - use the newToken directly
+                const addedToken = {
+                    ...newToken,
+                    address: newToken.address.toLowerCase(),
+                    abi: JSON.stringify(parsedAbi)
+                };
+                setSelectedToken(addedToken);
+                setRules(newRules);
+                setStatus("Token added successfully!");
+            } catch (error) {
+                setStatus("Invalid ABI JSON format. Please check the JSON structure.");
+                return;
+            }
+        } catch (error: any) {
+            console.error("Error adding token:", error);
+            setStatus(`Error adding token: ${error.message}`);
+        }
+    };
   
     const removeToken = (tokenName: string) => {
         const updatedTokens = tokens.filter(token => token.name !== tokenName);
@@ -184,108 +245,133 @@ const Quest = () => {
     };
 
     const checkQuestEligibility = async (addressToCheck: string) => {
-      if (!selectedToken) {
-          setStatus("Please select a token first");
-          return;
-      }
-  
-      if (!addressToCheck || !/^(0x)?[0-9a-fA-F]{40}$/.test(addressToCheck)) {
-          setStatus("Please enter a valid wallet address.");
-          return;
-      }
-  
-      try {
-          const provider = new BrowserProvider(window.ethereum);
-          
-          // Parse the ABI string to JSON
-          let parsedAbi;
-          try {
-              parsedAbi = JSON.parse(selectedToken.abi);
-          } catch (error) {
-              setStatus("Invalid ABI format for selected token");
-              return;
-          }
-  
-          // Create contract instance with type assertion
-          const contract = new Contract(
-              selectedToken.address,
-              parsedAbi,
-              provider
-          ) as Contract & {
-              balanceOf(address: string): Promise<bigint>;
-              filters: {
-                  Transfer(from: string | null, to: string | null): any;
-              };
-              queryFilter(filter: any, fromBlock: number, toBlock: number): Promise<any[]>;
-          };
-  
-          try {
-              // Verify contract methods exist
-              if (typeof contract.balanceOf !== 'function') {
-                  setStatus("Contract does not have a valid balanceOf function");
-                  return;
-              }
-  
-              if (!contract.filters || typeof contract.filters.Transfer !== 'function') {
-                  setStatus("Contract does not have a valid Transfer event filter");
-                  return;
-              }
-  
-              // Get balance with error handling
-              let balance;
-              try {
-                  balance = await contract.balanceOf(addressToCheck);
-              } catch (error: any) {
-                  setStatus(`Error fetching balance: ${error.message}`);
-                  return;
-              }
-  
-              const formattedBalance = parseFloat(formatUnits(balance, 18));
-  
-              // Apply balance rule
-              const balanceEligible = checkRule(formattedBalance, balanceAmount, balanceOperator);
-  
-              // Check transfer count with error handling
-              const currentBlock = await provider.getBlockNumber();
-              let transferEvents;
-              try {
-                  const filter = contract.filters.Transfer(addressToCheck, null);
-                  transferEvents = await contract.queryFilter(
-                      filter,
-                      currentBlock - 1000,
-                      currentBlock
-                  );
-              } catch (error: any) {
-                  setStatus(`Error fetching transfer history: ${error.message}`);
-                  return;
-              }
-  
-              const transferCountActual = transferEvents.length;
-  
-              // Apply transfer count rule
-              const transfersEligible = checkRule(transferCountActual, transferCount, transferOperator);
-  
-              // Set status based on eligibility
-              if (balanceEligible && transfersEligible) {
-                  setStatus(`Address ${addressToCheck} is eligible for the quest with ${selectedToken.name}!`);
-              } else {
-                  let failureReason = `Address ${addressToCheck} is not eligible for the quest with ${selectedToken.name} due to:`;
-                  if (!balanceEligible) {
-                      failureReason += `\n- Balance rule not met (requires ${balanceOperator} ${balanceAmount}, has ${formattedBalance})`;
-                  }
-                  if (!transfersEligible) {
-                      failureReason += `\n- Transfer rule not met (requires ${transferOperator} ${transferCount}, has ${transferCountActual})`;
-                  }
-                  setStatus(failureReason);
-              }
-          } catch (error: any) {
-              console.error("Contract interaction error:", error);
-              setStatus(`Contract interaction error: ${error.message}`);
-          }
-      } catch (error: any) {
-          console.error("Error checking eligibility:", error);
-          setStatus(`Error checking eligibility: ${error.message}`);
-      }
+        if (!selectedToken) {
+            setStatus("Please select a token first");
+            return;
+        }
+    
+        if (!addressToCheck || !/^(0x)?[0-9a-fA-F]{40}$/.test(addressToCheck)) {
+            setStatus("Please enter a valid wallet address.");
+            return;
+        }
+    
+        try {
+            const provider = new BrowserProvider(window.ethereum);
+            
+            let parsedAbi;
+            try {
+                parsedAbi = JSON.parse(selectedToken.abi);
+            } catch (error) {
+                setStatus("Invalid ABI format");
+                return;
+            }
+    
+            const contract = new Contract(
+                selectedToken.address,
+                parsedAbi,
+                provider
+            );
+    
+            const ruleResults = [];
+    
+            // Get decimals first for proper value formatting
+            let tokenDecimals = 18; // default to 18 if decimals() call fails
+            try {
+                const decimalsFunction = contract['decimals'];
+                if (typeof decimalsFunction === 'function') {
+                    const decimalsResult = await decimalsFunction();
+                    tokenDecimals = Number(decimalsResult);
+                    console.log("Token decimals:", tokenDecimals);
+                }
+            } catch (error) {
+                console.warn("Could not get decimals, using default:", error);
+            }
+    
+            // Check each rule
+            for (const rule of rules) {
+                try {
+                    const functionAbi = parsedAbi.find(
+                        (item: any) => item.name === rule.functionName && item.type === 'function'
+                    );
+    
+                    if (!functionAbi) {
+                        throw new Error(`Function ${rule.functionName} not found in ABI`);
+                    }
+    
+                    console.log(`Checking function: ${rule.functionName}`, functionAbi);
+    
+                    // Get the function from contract
+                    const contractFunction = contract[rule.functionName];
+                    if (typeof contractFunction !== 'function') {
+                        throw new Error(`Function ${rule.functionName} not found in contract`);
+                    }
+    
+                    // Determine if function needs address parameter
+                    const needsAddress = functionAbi.inputs?.length === 1 && 
+                                       functionAbi.inputs[0].type === 'address';
+    
+                    // Call the function
+                    const result = needsAddress ? 
+                        await contractFunction(addressToCheck) : 
+                        await contractFunction();
+    
+                    console.log(`Raw result for ${rule.functionName}:`, result);
+    
+                    // Handle different numeric types
+                    let value: number;
+                    const outputType = functionAbi.outputs?.[0]?.type;
+    
+                    if (outputType === 'uint8') {
+                        value = Number(result);
+                    } else if (['uint256', 'uint'].includes(outputType)) {
+                        value = parseFloat(formatUnits(result, tokenDecimals));
+                    } else {
+                        throw new Error(`Unsupported output type: ${outputType}`);
+                    }
+    
+                    console.log(`Formatted value for ${rule.functionName}:`, value);
+    
+                    // Check if the rule is satisfied
+                    const isEligible = checkRule(value, rule.value, rule.operator);
+    
+                    ruleResults.push({
+                        rule,
+                        success: isEligible,
+                        value,
+                        error: null
+                    });
+    
+                } catch (error: any) {
+                    console.error(`Error checking rule ${rule.functionName}:`, error);
+                    ruleResults.push({
+                        rule,
+                        success: false,
+                        error: `Error checking ${rule.displayName}: ${error.message}`
+                    });
+                }
+            }
+    
+            // Check if all rules are satisfied
+            const failedRules = ruleResults.filter(r => !r.success);
+
+            if (failedRules.length === 0) {
+                setStatus(`Address ${addressToCheck} is eligible for ${selectedToken.name} token (${selectedToken.address})!`);
+            } else {
+                let failureReason = `Address ${addressToCheck} is not eligible for ${selectedToken.name} token (${selectedToken.address}) due to:\n`;
+                failedRules.forEach((result) => {
+                    if (result.error) {
+                        failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
+                    } else {
+                        failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
+                    }
+                });
+                setStatus(failureReason);
+            }
+    
+        } catch (error: any) {
+            console.error("Error checking eligibility:", error);
+            setStatus(`Error checking eligibility: ${error.message}`);
+        }
     };
 
     const checkRule = (value: number, target: number, operator: string) => {
@@ -298,6 +384,10 @@ const Quest = () => {
                 return value > target;
             case "less-than":
                 return value < target;
+            case "equal":
+                return value === target;
+            case "not-equal":
+                return value !== target;
             default:
                 return false;
         }
@@ -308,6 +398,12 @@ const Quest = () => {
             setStatus("Please connect your wallet first.");
             return;
         }
+        if (!selectedToken) {
+            setStatus("Please select a token first.");
+            return;
+        }
+        // Add console.log for debugging
+        console.log("Checking eligibility for:", userAddress);
         checkQuestEligibility(userAddress);
     };
 
@@ -463,42 +559,45 @@ const Quest = () => {
 
                 <div className="rules-section">
                     <h3>Customize Eligibility Rules</h3>
-                    <div className="rule-row">
-                        <label>Balance:</label>
-                        <select 
-                            value={balanceOperator} 
-                            onChange={(e) => setBalanceOperator(e.target.value)}
-                        >
-                            <option value="greater-than-equal">{'≥'}</option>
-                            <option value="less-than-equal">{'≤'}</option>
-                            <option value="greater-than">{'>'}</option>
-                            <option value="less-than">{'<'}</option>
-                        </select>
-                        <input
-                            type="number"
-                            value={balanceAmount}
-                            onChange={(e) => setBalanceAmount(Number(e.target.value))}
-                        />
-                    </div>
-
-                    <div className="rule-row">
-                        <label>Transfer Count:</label>
-                        <select 
-                            value={transferOperator} 
-                            onChange={(e) => setTransferOperator(e.target.value)}
-                        >
-                            <option value="greater-than-equal">{'≥'}</option>
-                            <option value="less-than-equal">{'≤'}</option>
-                            <option value="greater-than">{'>'}</option>
-                            <option value="less-than">{'<'}</option>
-                        </select>
-                        <input
-                            type="number"
-                            min={0}
-                            value={transferCount}
-                            onChange={(e) => setTransferCount(Number(e.target.value))}
-                        />
-                    </div>
+                    {rules.length === 0 ? (
+                        <p>No rules available. Please select a token first.</p>
+                    ) : (
+                        rules.map((rule, index) => (
+                            <div key={rule.functionName} className="rule-row">
+                                <label>{rule.displayName}:</label>
+                                <select 
+                                    value={rule.operator} 
+                                    onChange={(e) => {
+                                        const newRules = [...rules];
+                                        newRules[index] = {
+                                            ...rule,
+                                            operator: e.target.value
+                                        };
+                                        setRules(newRules);
+                                    }}
+                                >
+                                    <option value="greater-than-equal">{'≥'}</option>
+                                    <option value="less-than-equal">{'≤'}</option>
+                                    <option value="greater-than">{'>'}</option>
+                                    <option value="less-than">{'<'}</option>
+                                    <option value="equal">{'='}</option>
+                                    <option value="not-equal">{'≠'}</option>
+                                </select>
+                                <input
+                                    type="number"
+                                    value={rule.value}
+                                    onChange={(e) => {
+                                        const newRules = [...rules];
+                                        newRules[index] = {
+                                            ...rule,
+                                            value: Number(e.target.value)
+                                        };
+                                        setRules(newRules);
+                                    }}
+                                />
+                            </div>
+                        ))
+                    )}
                 </div>
 
                 <div className="status-section">
