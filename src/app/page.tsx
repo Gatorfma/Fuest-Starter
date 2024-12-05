@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Contract, BrowserProvider, formatUnits } from 'ethers';
 import './page.css';
+import { trpc } from '~/utils/trpc';
 
 interface Token {
+    id: string;
     name: string;
     address: string;
     abi: string;
@@ -80,6 +82,7 @@ const Quest = () => {
     const [tokens, setTokens] = useState<Token[]>([]);
     const [selectedToken, setSelectedToken] = useState<Token | null>(null);
     const [newToken, setNewToken] = useState<Token>({
+        id: '',
         name: '',
         address: '',
         abi: ''
@@ -174,9 +177,9 @@ const Quest = () => {
                 
                 setTokens(updatedTokens);
                 setShowAddToken(false);
-                setNewToken({ name: '', address: '', abi: '' });
+                setNewToken({ id: '', name: '', address: '', abi: '' });
                 
-                // Fix for the TypeScript error - use the newToken directly
+                
                 const addedToken = {
                     ...newToken,
                     address: newToken.address.toLowerCase(),
@@ -411,6 +414,28 @@ const Quest = () => {
         e.preventDefault();
         checkQuestEligibility(inputAddress);
     };
+
+    const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
+        onSuccess: (data) => {
+          if (data.success) {
+            setStatus(`Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
+          } else {
+            let failureReason = `Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
+            data.results.forEach((result) => {
+              if (result.error) {
+                failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
+              } else {
+                failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
+              }
+            });
+            setStatus(failureReason);
+          }
+        },
+        onError: (error) => {
+          setStatus(`Error checking eligibility: ${error.message}`);
+        }
+      });
+    
 
     return (
         <div className="quest-container">

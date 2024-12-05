@@ -1,9 +1,8 @@
-import { createTRPCRouter } from "~/server/api/trpc";
-import { tokensRouter } from "./routers/tokens";
+import { createTRPCRouter } from "./trpc";
+import { eligibilityRouter } from "./routers/eligibility";
 
 export const appRouter = createTRPCRouter({
-  tokens: tokensRouter,
+  eligibility: eligibilityRouter,
 });
 
-// Export API type
 export type AppRouter = typeof appRouter;

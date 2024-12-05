@@ -1,19 +1,27 @@
-import { createClient, type Client } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { z } from "zod";
 
-import { env } from "~/env";
-import * as schema from "./schema";
+export const TokenSchema = z.object({
+    id: z.string().optional(),
+    name: z.string(),
+    address: z.string(),
+    abi: z.string(),
+    createdAt: z.date().optional(),
+    updatedAt: z.date().optional()
+});
 
-/**
- * Cache the database connection in development. This avoids creating a new connection on every HMR
- * update.
- */
-const globalForDb = globalThis as unknown as {
-  client: Client | undefined;
-};
+export const RuleSchema = z.object({
+    functionName: z.string(),
+    operator: z.string(),
+    value: z.number(),
+    displayName: z.string()
+});
 
-export const client =
-  globalForDb.client ?? createClient({ url: env.DATABASE_URL });
-if (env.NODE_ENV !== "production") globalForDb.client = client;
+export const EligibilityCheckSchema = z.object({
+    tokenId: z.string(),
+    address: z.string(),
+    rules: z.array(RuleSchema)
+});
 
-export const db = drizzle(client, { schema });
+export type Token = z.infer<typeof TokenSchema>;
+export type Rule = z.infer<typeof RuleSchema>;
+export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
