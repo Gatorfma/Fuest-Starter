@@ -1,102 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { Contract, BrowserProvider, formatUnits } from 'ethers';
-import { TokenSchema, RuleSchema, EligibilityCheckSchema } from "~/server/db/index";
-
-export const eligibilityRouter = createTRPCRouter({
-  checkEligibility: publicProcedure
-    .input(EligibilityCheckSchema)
-    .mutation(async ({ ctx, input }) => {
-      try {
-        const token = await ctx.db.token.findUnique({
-          where: { id: input.tokenId }
-        });
-
-        if (!token) {
-          throw new Error("Token not found");
-        }
-
-        const provider = new BrowserProvider(window.ethereum);
-        
-        // Parse ABI
-        const parsedAbi = JSON.parse(token.abi);
-        
-        // Create contract instance
-        const contract = new Contract(
-          token.address,
-          parsedAbi,
-          provider
-        );
-
-        const ruleResults = [];
-
-        // Check each rule
-        for (const rule of input.rules) {
-          try {
-            const functionAbi = parsedAbi.find(
-              (item: any) => item.name === rule.functionName
-            );
-
-            if (!functionAbi) {
-              throw new Error(`Function ${rule.functionName} not found in ABI`);
-            }
-
-            // Get the function
-            const contractFunction = contract[rule.functionName as keyof typeof contract];
-            if (!contractFunction || typeof contractFunction !== 'function') {
-                throw new Error(`Function ${rule.functionName} not found or is not callable`);
-            }
-
-            // Then use it with type assertion
-            let result;
-            if (functionAbi.inputs?.length === 1 && functionAbi.inputs[0].type === 'address') {
-                result = await (contractFunction as (address: string) => Promise<bigint>)(input.address);
-            } else {
-                result = await (contractFunction as () => Promise<bigint>)();
-            }
-
-            // Get output type
-            const outputType = functionAbi.outputs[0].type;
-            
-            // Convert result based on output type
-            let value;
-            if (outputType === 'uint8') {
-              value = Number(result);
-            } else {
-              value = Number(formatUnits(result, outputType === 'uint256' ? 18 : 0));
-            }
-
-            // Check if rule is satisfied
-            const isEligible = checkRule(value, rule.value, rule.operator);
-
-            ruleResults.push({
-              rule,
-              success: isEligible,
-              value,
-              error: null
-            });
-
-          } catch (error: any) {
-            ruleResults.push({
-              rule,
-              success: false,
-              error: `Error checking ${rule.displayName}: ${error.message}`
-            });
-          }
-        }
-
-        return {
-          success: ruleResults.every(r => r.success),
-          results: ruleResults,
-          tokenName: token.name,
-          tokenAddress: token.address
-        };
-
-      } catch (error: any) {
-        throw new Error(`Error checking eligibility: ${error.message}`);
-      }
-    }),
-});
+import { Contract, JsonRpcProvider, formatUnits } from 'ethers';
+import { TRPCError } from "@trpc/server";
+import { env } from "../../../../env.mjs";
 
 const checkRule = (value: number, target: number, operator: string): boolean => {
   switch (operator) {
@@ -116,3 +22,100 @@ const checkRule = (value: number, target: number, operator: string): boolean => 
       return false;
   }
 };
+
+export const eligibilityRouter = createTRPCRouter({
+  checkEligibility: publicProcedure
+    .input(z.object({
+      selectedToken: z.object({
+        id: z.string(),
+        name: z.string(),
+        address: z.string(),
+        abi: z.string()
+      }),
+      addressToCheck: z.string().regex(/^(0x)?[0-9a-fA-F]{40}$/),
+      rules: z.array(z.object({
+        functionName: z.string(),
+        operator: z.string(),
+        value: z.number(),
+        displayName: z.string()
+      }))
+    }))
+    .mutation(async ({ input: { selectedToken, addressToCheck, rules } }) => {
+      try {
+        const provider = new JsonRpcProvider(env.RPC_URL);
+
+        const contract = new Contract(
+          selectedToken.address,
+          JSON.parse(selectedToken.abi),
+          provider
+        );
+
+        const ruleResults = [];
+        let tokenDecimals = 18;
+
+        try {
+          const decimalsFunction = contract['decimals'];
+          if (typeof decimalsFunction === 'function') {
+            const decimalsResult = await decimalsFunction();
+            tokenDecimals = Number(decimalsResult);
+          }
+        } catch (error) {
+          console.warn("Using default decimals (18)");
+        }
+
+        for (const rule of rules) {
+          try {
+            const functionAbi = JSON.parse(selectedToken.abi).find(
+              (item: any) => item.name === rule.functionName
+            );
+
+            if (!functionAbi) {
+              throw new Error(`Function ${rule.functionName} not found in ABI`);
+            }
+
+            const contractFunction = contract[rule.functionName];
+            if (typeof contractFunction !== 'function') {
+              throw new Error(`Function ${rule.functionName} not found in contract`);
+            }
+
+            let result;
+            if (functionAbi.inputs?.length === 1 && functionAbi.inputs[0].type === 'address') {
+              result = await contractFunction(addressToCheck);
+            } else {
+              result = await contractFunction();
+            }
+
+            const value = functionAbi.outputs?.[0]?.type === 'uint8'
+              ? Number(result)
+              : parseFloat(formatUnits(result, tokenDecimals));
+
+            ruleResults.push({
+              rule,
+              success: checkRule(value, rule.value, rule.operator),
+              value,
+              error: null
+            });
+          } catch (error: any) {
+            ruleResults.push({
+              rule,
+              success: false,
+              error: error.message
+            });
+          }
+        }
+
+        return {
+          success: ruleResults.every(r => r.success),
+          tokenName: selectedToken.name,
+          tokenAddress: selectedToken.address,
+          results: ruleResults
+        };
+
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Error checking eligibility: ${error.message}`
+        });
+      }
+    }),
+});

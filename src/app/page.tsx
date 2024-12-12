@@ -55,7 +55,7 @@ const parseAbiForRules = (abi: string): AbiFunction[] => {
             // Check inputs - must have 0 or 1 input
             if (!item.inputs) return true;
             if (item.inputs.length === 0) return true;
-            
+
             // If 1 input, it must be an address
             return item.inputs.length === 1 && item.inputs[0]?.type === 'address';
         });
@@ -135,12 +135,12 @@ const Quest = () => {
                 setStatus("Please fill in all token details");
                 return;
             }
-    
+
             if (!/^(0x)?[0-9a-fA-F]{40}$/.test(newToken.address)) {
                 setStatus("Invalid contract address format");
                 return;
             }
-    
+
             // Parse and validate ABI
             let parsedAbi;
             try {
@@ -149,7 +149,7 @@ const Quest = () => {
                     setStatus("Invalid ABI format: must be an array of function descriptions");
                     return;
                 }
-    
+
                 // Generate rules from ABI
                 const eligibleFunctions = parseAbiForRules(newToken.abi);
                 const newRules: Rule[] = eligibleFunctions.map(func => ({
@@ -158,28 +158,28 @@ const Quest = () => {
                     value: 0,
                     displayName: formatFunctionName(func.name)
                 }));
-    
+
                 // Check for duplicate tokens
-                if (tokens.some(token => 
+                if (tokens.some(token =>
                     token.name.toLowerCase() === newToken.name.toLowerCase() ||
                     token.address.toLowerCase() === newToken.address.toLowerCase()
                 )) {
                     setStatus("A token with this name or address already exists");
                     return;
                 }
-    
+
                 // Add new token
                 const updatedTokens = [...tokens, {
                     ...newToken,
                     address: newToken.address.toLowerCase(),
                     abi: JSON.stringify(parsedAbi)
                 }];
-                
+
                 setTokens(updatedTokens);
                 setShowAddToken(false);
                 setNewToken({ id: '', name: '', address: '', abi: '' });
-                
-                
+
+
                 const addedToken = {
                     ...newToken,
                     address: newToken.address.toLowerCase(),
@@ -197,7 +197,7 @@ const Quest = () => {
             setStatus(`Error adding token: ${error.message}`);
         }
     };
-  
+
     const removeToken = (tokenName: string) => {
         const updatedTokens = tokens.filter(token => token.name !== tokenName);
         setTokens(updatedTokens);
@@ -247,135 +247,7 @@ const Quest = () => {
         }
     };
 
-    const checkQuestEligibility = async (addressToCheck: string) => {
-        if (!selectedToken) {
-            setStatus("Please select a token first");
-            return;
-        }
-    
-        if (!addressToCheck || !/^(0x)?[0-9a-fA-F]{40}$/.test(addressToCheck)) {
-            setStatus("Please enter a valid wallet address.");
-            return;
-        }
-    
-        try {
-            const provider = new BrowserProvider(window.ethereum);
-            
-            let parsedAbi;
-            try {
-                parsedAbi = JSON.parse(selectedToken.abi);
-            } catch (error) {
-                setStatus("Invalid ABI format");
-                return;
-            }
-    
-            const contract = new Contract(
-                selectedToken.address,
-                parsedAbi,
-                provider
-            );
-    
-            const ruleResults = [];
-    
-            // Get decimals first for proper value formatting
-            let tokenDecimals = 18; // default to 18 if decimals() call fails
-            try {
-                const decimalsFunction = contract['decimals'];
-                if (typeof decimalsFunction === 'function') {
-                    const decimalsResult = await decimalsFunction();
-                    tokenDecimals = Number(decimalsResult);
-                    console.log("Token decimals:", tokenDecimals);
-                }
-            } catch (error) {
-                console.warn("Could not get decimals, using default:", error);
-            }
-    
-            // Check each rule
-            for (const rule of rules) {
-                try {
-                    const functionAbi = parsedAbi.find(
-                        (item: any) => item.name === rule.functionName && item.type === 'function'
-                    );
-    
-                    if (!functionAbi) {
-                        throw new Error(`Function ${rule.functionName} not found in ABI`);
-                    }
-    
-                    console.log(`Checking function: ${rule.functionName}`, functionAbi);
-    
-                    // Get the function from contract
-                    const contractFunction = contract[rule.functionName];
-                    if (typeof contractFunction !== 'function') {
-                        throw new Error(`Function ${rule.functionName} not found in contract`);
-                    }
-    
-                    // Determine if function needs address parameter
-                    const needsAddress = functionAbi.inputs?.length === 1 && 
-                                       functionAbi.inputs[0].type === 'address';
-    
-                    // Call the function
-                    const result = needsAddress ? 
-                        await contractFunction(addressToCheck) : 
-                        await contractFunction();
-    
-                    console.log(`Raw result for ${rule.functionName}:`, result);
-    
-                    // Handle different numeric types
-                    let value: number;
-                    const outputType = functionAbi.outputs?.[0]?.type;
-    
-                    if (outputType === 'uint8') {
-                        value = Number(result);
-                    } else if (['uint256', 'uint'].includes(outputType)) {
-                        value = parseFloat(formatUnits(result, tokenDecimals));
-                    } else {
-                        throw new Error(`Unsupported output type: ${outputType}`);
-                    }
-    
-                    console.log(`Formatted value for ${rule.functionName}:`, value);
-    
-                    // Check if the rule is satisfied
-                    const isEligible = checkRule(value, rule.value, rule.operator);
-    
-                    ruleResults.push({
-                        rule,
-                        success: isEligible,
-                        value,
-                        error: null
-                    });
-    
-                } catch (error: any) {
-                    console.error(`Error checking rule ${rule.functionName}:`, error);
-                    ruleResults.push({
-                        rule,
-                        success: false,
-                        error: `Error checking ${rule.displayName}: ${error.message}`
-                    });
-                }
-            }
-    
-            // Check if all rules are satisfied
-            const failedRules = ruleResults.filter(r => !r.success);
 
-            if (failedRules.length === 0) {
-                setStatus(`Address ${addressToCheck} is eligible for ${selectedToken.name} token (${selectedToken.address})!`);
-            } else {
-                let failureReason = `Address ${addressToCheck} is not eligible for ${selectedToken.name} token (${selectedToken.address}) due to:\n`;
-                failedRules.forEach((result) => {
-                    if (result.error) {
-                        failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
-                    } else {
-                        failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
-                    }
-                });
-                setStatus(failureReason);
-            }
-    
-        } catch (error: any) {
-            console.error("Error checking eligibility:", error);
-            setStatus(`Error checking eligibility: ${error.message}`);
-        }
-    };
 
     const checkRule = (value: number, target: number, operator: string) => {
         switch (operator) {
@@ -396,6 +268,27 @@ const Quest = () => {
         }
     };
 
+    const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
+        onSuccess: (data) => {
+            if (data.success) {
+                setStatus(`Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
+            } else {
+                let failureReason = `Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
+                data.results.forEach((result) => {
+                    if (result.error) {
+                        failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
+                    } else {
+                        failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
+                    }
+                });
+                setStatus(failureReason);
+            }
+        },
+        onError: (error) => {
+            setStatus(`Error checking eligibility: ${error.message}`);
+        }
+    });
+
     const handleConnectedWalletCheck = () => {
         if (!userAddress) {
             setStatus("Please connect your wallet first.");
@@ -405,37 +298,27 @@ const Quest = () => {
             setStatus("Please select a token first.");
             return;
         }
-        // Add console.log for debugging
-        console.log("Checking eligibility for:", userAddress);
-        checkQuestEligibility(userAddress);
+
+        checkEligibilityMutation.mutate({
+            selectedToken,
+            addressToCheck: userAddress,
+            rules
+        });
     };
 
     const handleInputAddressCheck = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        checkQuestEligibility(inputAddress);
-    };
-
-    const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
-        onSuccess: (data) => {
-          if (data.success) {
-            setStatus(`Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
-          } else {
-            let failureReason = `Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
-            data.results.forEach((result) => {
-              if (result.error) {
-                failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
-              } else {
-                failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
-              }
-            });
-            setStatus(failureReason);
-          }
-        },
-        onError: (error) => {
-          setStatus(`Error checking eligibility: ${error.message}`);
+        if (!selectedToken) {
+            setStatus("Please select a token first.");
+            return;
         }
-      });
-    
+
+        checkEligibilityMutation.mutate({
+            selectedToken,
+            addressToCheck: inputAddress,
+            rules
+        });
+    };
 
     return (
         <div className="quest-container">
@@ -450,8 +333,8 @@ const Quest = () => {
                         </div>
                     ) : (
                         <div className="token-selection">
-                            <select 
-                                value={selectedToken?.name || ''} 
+                            <select
+                                value={selectedToken?.name || ''}
                                 onChange={(e) => {
                                     const selected = tokens.find(t => t.name === e.target.value);
                                     setSelectedToken(selected || null);
@@ -467,8 +350,8 @@ const Quest = () => {
                             </select>
                         </div>
                     )}
-                    
-                    <button 
+
+                    <button
                         className="secondary-btn"
                         onClick={() => setShowAddToken(!showAddToken)}
                         style={{ marginTop: '1rem' }}
@@ -482,21 +365,21 @@ const Quest = () => {
                                 type="text"
                                 placeholder="Token Name"
                                 value={newToken.name}
-                                onChange={(e) => setNewToken({...newToken, name: e.target.value})}
+                                onChange={(e) => setNewToken({ ...newToken, name: e.target.value })}
                             />
                             <input
                                 type="text"
                                 placeholder="Contract Address"
                                 value={newToken.address}
-                                onChange={(e) => setNewToken({...newToken, address: e.target.value})}
+                                onChange={(e) => setNewToken({ ...newToken, address: e.target.value })}
                             />
                             <textarea
                                 placeholder="Contract ABI (JSON format)"
                                 value={newToken.abi}
-                                onChange={(e) => setNewToken({...newToken, abi: e.target.value})}
+                                onChange={(e) => setNewToken({ ...newToken, abi: e.target.value })}
                                 className="abi-input"
                             />
-                            <button 
+                            <button
                                 className="primary-btn"
                                 onClick={addToken}
                             >
@@ -536,8 +419,8 @@ const Quest = () => {
                                 <div className="wallet-address-display">
                                     <span className="full-address">{userAddress}</span>
                                     <div className="address-actions">
-                                        <button 
-                                            onClick={copyAddressToClipboard} 
+                                        <button
+                                            onClick={copyAddressToClipboard}
                                             className="copy-btn"
                                             title="Copy Address"
                                         >
@@ -546,7 +429,7 @@ const Quest = () => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="wallet-actions">
                                 <button onClick={handleSwitchWallet} className="secondary-btn">
                                     Switch Wallet
@@ -556,8 +439,8 @@ const Quest = () => {
                     )}
 
                     {userAddress && (
-                        <button 
-                            onClick={handleConnectedWalletCheck} 
+                        <button
+                            onClick={handleConnectedWalletCheck}
                             className="primary-btn"
                             disabled={!userAddress || !selectedToken}
                         >
@@ -573,8 +456,8 @@ const Quest = () => {
                         value={inputAddress}
                         onChange={(e) => setInputAddress(e.target.value)}
                     />
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         className="primary-btn"
                         disabled={!selectedToken}
                     >
@@ -590,8 +473,8 @@ const Quest = () => {
                         rules.map((rule, index) => (
                             <div key={rule.functionName} className="rule-row">
                                 <label>{rule.displayName}:</label>
-                                <select 
-                                    value={rule.operator} 
+                                <select
+                                    value={rule.operator}
                                     onChange={(e) => {
                                         const newRules = [...rules];
                                         newRules[index] = {
