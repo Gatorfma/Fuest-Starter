@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Contract, BrowserProvider, formatUnits } from 'ethers';
+import { BrowserProvider } from 'ethers';
 import './page.css';
 import { trpc } from '~/utils/trpc';
+import { type Token } from "~/server/db/schema";
 
-interface Token {
-    id: string;
-    name: string;
-    address: string;
-    abi: string;
-}
+
 
 interface AbiFunction {
     name: string;
@@ -78,11 +74,12 @@ const Quest = () => {
     const [inputAddress, setInputAddress] = useState("");
     const [status, setStatus] = useState("");
 
+
     // Token management states
     const [tokens, setTokens] = useState<Token[]>([]);
     const [selectedToken, setSelectedToken] = useState<Token | null>(null);
     const [newToken, setNewToken] = useState<Token>({
-        id: '',
+        id: 0, // Changed to number since we use serial in schema
         name: '',
         address: '',
         abi: ''
@@ -90,29 +87,49 @@ const Quest = () => {
     const [showAddToken, setShowAddToken] = useState(false);
 
     // State for custom rules
-    const [balanceAmount, setBalanceAmount] = useState(10000);
-    const [balanceOperator, setBalanceOperator] = useState("greater-than-equal");
-    const [transferCount, setTransferCount] = useState(5);
-    const [transferOperator, setTransferOperator] = useState("greater-than-equal");
     const [rules, setRules] = useState<Rule[]>([]);
 
-    // Load tokens from localStorage on component mount
-    useEffect(() => {
-        const savedTokens = localStorage.getItem('tokens');
-        if (savedTokens) {
-            const parsedTokens = JSON.parse(savedTokens);
-            setTokens(parsedTokens);
-            if (parsedTokens.length > 0) {
-                setSelectedToken(parsedTokens[0]);
+    // Add tRPC hooks
+    const { data: dbTokens } = trpc.tokens.getAll.useQuery<{ id: number; name: string; address: string; abi: string; }[]>();
+
+    const utils = trpc.useContext();
+
+    const addTokenMutation = trpc.tokens.addToken.useMutation({
+        onSuccess: (data) => {
+            if (data) {
+                setSelectedToken(data);
+                setShowAddToken(false);
+                setNewToken({ id: 0, name: '', address: '', abi: '' });
+                setStatus("Token added successfully!");
+            } else {
+                setStatus("Error: No data returned from the mutation.");
             }
+            utils.tokens.getAll.invalidate(); // Invalidate the getAll query
+        },
+        onError: (error) => {
+            setStatus(`Error adding token: ${error.message}`);
         }
-    }, []);
+    });
 
-    // Save tokens to localStorage whenever they change
+    const deleteTokenMutation = trpc.tokens.deleteToken.useMutation({
+        onSuccess: () => {
+            utils.tokens.getAll.invalidate(); // Invalidate the getAll query
+        },
+        onError: (error) => {
+            setStatus(`Error deleting token: ${error.message}`);
+        }
+    });
+
+    // Replace localStorage effects with database effect
     useEffect(() => {
-        localStorage.setItem('tokens', JSON.stringify(tokens));
-    }, [tokens]);
+        if (dbTokens) {
+            setTokens(dbTokens);
+            setSelectedToken(dbTokens.length > 0 && dbTokens[0] ? dbTokens[0] : null);
 
+        }
+    }, [dbTokens]);
+
+    // Update the rules useEffect to use the same Token type
     useEffect(() => {
         if (selectedToken) {
             const eligibleFunctions = parseAbiForRules(selectedToken.abi);
@@ -128,7 +145,7 @@ const Quest = () => {
         }
     }, [selectedToken]);
 
-    const addToken = () => {
+    const addToken = async () => {
         try {
             // Validate inputs
             if (!newToken.name || !newToken.address || !newToken.abi) {
@@ -142,67 +159,34 @@ const Quest = () => {
             }
 
             // Parse and validate ABI
-            let parsedAbi;
-            try {
-                parsedAbi = JSON.parse(newToken.abi);
-                if (!Array.isArray(parsedAbi)) {
-                    setStatus("Invalid ABI format: must be an array of function descriptions");
-                    return;
-                }
-
-                // Generate rules from ABI
-                const eligibleFunctions = parseAbiForRules(newToken.abi);
-                const newRules: Rule[] = eligibleFunctions.map(func => ({
-                    functionName: func.name,
-                    operator: 'greater-than-equal',
-                    value: 0,
-                    displayName: formatFunctionName(func.name)
-                }));
-
-                // Check for duplicate tokens
-                if (tokens.some(token =>
-                    token.name.toLowerCase() === newToken.name.toLowerCase() ||
-                    token.address.toLowerCase() === newToken.address.toLowerCase()
-                )) {
-                    setStatus("A token with this name or address already exists");
-                    return;
-                }
-
-                // Add new token
-                const updatedTokens = [...tokens, {
-                    ...newToken,
-                    address: newToken.address.toLowerCase(),
-                    abi: JSON.stringify(parsedAbi)
-                }];
-
-                setTokens(updatedTokens);
-                setShowAddToken(false);
-                setNewToken({ id: '', name: '', address: '', abi: '' });
-
-
-                const addedToken = {
-                    ...newToken,
-                    address: newToken.address.toLowerCase(),
-                    abi: JSON.stringify(parsedAbi)
-                };
-                setSelectedToken(addedToken);
-                setRules(newRules);
-                setStatus("Token added successfully!");
-            } catch (error) {
-                setStatus("Invalid ABI JSON format. Please check the JSON structure.");
+            const parsedAbi = JSON.parse(newToken.abi);
+            if (!Array.isArray(parsedAbi)) {
+                setStatus("Invalid ABI format: must be an array of function descriptions");
                 return;
             }
+
+            // Add token to database
+            await addTokenMutation.mutateAsync({
+                name: newToken.name,
+                address: newToken.address.toLowerCase(),
+                abi: JSON.stringify(parsedAbi)
+            });
+
         } catch (error: any) {
             console.error("Error adding token:", error);
             setStatus(`Error adding token: ${error.message}`);
         }
     };
 
-    const removeToken = (tokenName: string) => {
-        const updatedTokens = tokens.filter(token => token.name !== tokenName);
-        setTokens(updatedTokens);
-        if (selectedToken?.name === tokenName) {
-            setSelectedToken(updatedTokens[0] || null);
+    const removeToken = async (tokenId: number) => {
+        try {
+            await deleteTokenMutation.mutateAsync(tokenId);
+            if (selectedToken?.id === tokenId) {
+                const remainingTokens = tokens.filter(t => t.id !== tokenId);
+                setSelectedToken(remainingTokens[0] || null);
+            }
+        } catch (error: any) {
+            setStatus(`Error removing token: ${error.message}`);
         }
     };
 
@@ -249,32 +233,13 @@ const Quest = () => {
 
 
 
-    const checkRule = (value: number, target: number, operator: string) => {
-        switch (operator) {
-            case "greater-than-equal":
-                return value >= target;
-            case "less-than-equal":
-                return value <= target;
-            case "greater-than":
-                return value > target;
-            case "less-than":
-                return value < target;
-            case "equal":
-                return value === target;
-            case "not-equal":
-                return value !== target;
-            default:
-                return false;
-        }
-    };
-
     const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
         onSuccess: (data) => {
             if (data.success) {
                 setStatus(`Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
             } else {
                 let failureReason = `Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
-                data.results.forEach((result) => {
+                data.failedRules.forEach((result) => {
                     if (result.error) {
                         failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
                     } else {
@@ -396,7 +361,7 @@ const Quest = () => {
                                     <span>{token.name}</span>
                                     <button
                                         className="remove-token-btn"
-                                        onClick={() => removeToken(token.name)}
+                                        onClick={() => removeToken(token.id)}
                                         title="Remove Token"
                                     >
                                         ×

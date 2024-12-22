@@ -27,7 +27,7 @@ export const eligibilityRouter = createTRPCRouter({
   checkEligibility: publicProcedure
     .input(z.object({
       selectedToken: z.object({
-        id: z.string(),
+        id: z.number(),
         name: z.string(),
         address: z.string(),
         abi: z.string()
@@ -50,7 +50,7 @@ export const eligibilityRouter = createTRPCRouter({
           provider
         );
 
-        const ruleResults = [];
+        const failedRules = [];
         let tokenDecimals = 18;
 
         try {
@@ -89,14 +89,19 @@ export const eligibilityRouter = createTRPCRouter({
               ? Number(result)
               : parseFloat(formatUnits(result, tokenDecimals));
 
-            ruleResults.push({
-              rule,
-              success: checkRule(value, rule.value, rule.operator),
-              value,
-              error: null
-            });
+            const isEligible = checkRule(value, rule.value, rule.operator);
+
+            // Only add to failedRules if the rule check failed
+            if (!isEligible) {
+              failedRules.push({
+                rule,
+                success: false,
+                value,
+                error: null
+              });
+            }
           } catch (error: any) {
-            ruleResults.push({
+            failedRules.push({
               rule,
               success: false,
               error: error.message
@@ -105,10 +110,10 @@ export const eligibilityRouter = createTRPCRouter({
         }
 
         return {
-          success: ruleResults.every(r => r.success),
+          success: failedRules.length === 0,
           tokenName: selectedToken.name,
           tokenAddress: selectedToken.address,
-          results: ruleResults
+          failedRules // Only returning failed rules
         };
 
       } catch (error: any) {

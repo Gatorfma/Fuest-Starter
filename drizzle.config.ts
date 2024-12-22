@@ -1,12 +1,10 @@
-import { type Config } from "drizzle-kit";
+import { defineConfig } from "drizzle-kit";
 
-import { env } from "~/env";
-
-export default {
+export default defineConfig({
+  dialect: "postgresql",
   schema: "./src/server/db/schema.ts",
-  dialect: "sqlite",
+  out: "./drizzle",
   dbCredentials: {
-    url: env.DATABASE_URL,
+    url: process.env.POSTGRES_URL || "postgres://neondb_owner:5sm0HEZxFlvO@ep-floral-poetry-a24txlv4-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require",
   },
-  tablesFilter: ["fuest_*"],
-} satisfies Config;
+});

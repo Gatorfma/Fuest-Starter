@@ -1,43 +1,33 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
-
-//Database ile bağlanacak!!!!!
-const tokensDb = new Map<string, { abi: string; address: string }>();
+import { createTRPCRouter, publicProcedure } from "../trpc";
+import { db } from "~/server/db";
+import { tokens } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 
 export const tokensRouter = createTRPCRouter({
-  // Fetch all tokens
-  getAll: publicProcedure.query(() => {
-    return Array.from(tokensDb.entries()).map(([key, value]) => ({
-      name: key,
-      ...value,
-    }));
+  getAll: publicProcedure.query(async () => {
+    return await db.select().from(tokens);
   }),
 
-  // Add a new token
-  addToken: protectedProcedure
-    .input(
-      z.object({
-        name: z.string(),
-        address: z.string(),
-        abi: z.string(),
-      })
-    )
-    .mutation(({ input }) => {
-      if (tokensDb.has(input.name)) {
-        throw new Error("Token already exists.");
-      }
-      tokensDb.set(input.name, { address: input.address, abi: input.abi });
-      return { success: true, message: "Token added successfully!" };
+  addToken: publicProcedure
+    .input(z.object({
+      name: z.string(),
+      address: z.string(),
+      abi: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const result = await db.insert(tokens).values({
+        name: input.name,
+        address: input.address,
+        abi: input.abi,
+      }).returning();
+      return result[0];
     }),
 
-  // Fetch a specific token
-  getToken: publicProcedure
-    .input(z.string()) // Token name
-    .query(({ input }) => {
-      const token = tokensDb.get(input);
-      if (!token) {
-        throw new Error("Token not found.");
-      }
-      return token;
+  deleteToken: publicProcedure
+    .input(z.number())
+    .mutation(async ({ input }) => {
+      await db.delete(tokens).where(eq(tokens.id, input));
+      return { success: true };
     }),
 });
