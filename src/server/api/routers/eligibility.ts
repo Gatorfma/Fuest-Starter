@@ -91,7 +91,6 @@ export const eligibilityRouter = createTRPCRouter({
 
             const isEligible = checkRule(value, rule.value, rule.operator);
 
-            // Only add to failedRules if the rule check failed
             if (!isEligible) {
               failedRules.push({
                 rule,
@@ -113,7 +112,7 @@ export const eligibilityRouter = createTRPCRouter({
           success: failedRules.length === 0,
           tokenName: selectedToken.name,
           tokenAddress: selectedToken.address,
-          failedRules // Only returning failed rules
+          failedRules
         };
 
       } catch (error: any) {

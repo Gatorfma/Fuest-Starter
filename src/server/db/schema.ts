@@ -45,7 +45,7 @@ export const verificationTokens = createTable("verificationToken", {
   expires: timestamp("expires").notNull(),
 });
 
-// Composite primary key for verificationTokens
+
 export const verificationTokensIndex = {
   compoundKey: ["identifier", "token"] as const,
 };
