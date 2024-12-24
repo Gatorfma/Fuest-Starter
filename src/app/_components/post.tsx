@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-
-import { api } from "~/trpc/react";
+import { trpc } from "~/utils/trpc";  // Change this import
 
 export function LatestPost() {
-  const [latestPost] = api.post.getLatest.useSuspenseQuery();
+  const [latestPost] = trpc.posts.getLatest.useSuspenseQuery();  // Changed from api to trpc and post to posts
 
-  const utils = api.useUtils();
+  const utils = trpc.useContext();  // Changed from api.useUtils
   const [name, setName] = useState("");
-  const createPost = api.post.create.useMutation({
+  const createPost = trpc.posts.create.useMutation({  // Changed from api to trpc and post to posts
     onSuccess: async () => {
-      await utils.post.invalidate();
+      await utils.posts.invalidate();  // Changed from post to posts
       setName("");
     },
   });
