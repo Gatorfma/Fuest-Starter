@@ -58,4 +58,19 @@ export const tokens = createTable("token", {
   abi: text("abi").notNull(),
 });
 
+export const posts = createTable("post", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  createdById: text("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at")
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull(),
+});
+
+export type Post = typeof posts.$inferSelect;
 export type Token = typeof tokens.$inferSelect;
