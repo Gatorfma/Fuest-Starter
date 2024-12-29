@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { BrowserProvider } from 'ethers';
 import './page.css';
 import { trpc } from '~/utils/trpc';
 import { type Token } from "~/server/db/schema";
@@ -213,8 +212,7 @@ const Quest = () => {
     const connectWallet = async () => {
         if (window.ethereum) {
             try {
-                const provider = new BrowserProvider(window.ethereum);
-                const accounts = await provider.send("eth_requestAccounts", []);
+                const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
                 setUserAddress(accounts[0]);
                 setStatus("");
             } catch (error) {
@@ -228,8 +226,8 @@ const Quest = () => {
 
     const handleSwitchWallet = async () => {
         try {
-            const provider = new BrowserProvider(window.ethereum);
-            await provider.send("wallet_requestPermissions", [{ eth_accounts: {} }]);
+            if (!window.ethereum) throw new Error("No ethereum provider found");
+            await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
             connectWallet();
         } catch (error) {
             console.error("Error switching wallet:", error);

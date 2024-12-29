@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { Contract, JsonRpcProvider, formatUnits } from 'ethers';
+import { createPublicClient, formatUnits, http } from 'viem';
 import { TRPCError } from "@trpc/server";
 import { env } from "../../../../env.mjs";
 
@@ -42,23 +42,27 @@ export const eligibilityRouter = createTRPCRouter({
     }))
     .mutation(async ({ input: { selectedToken, addressToCheck, rules } }) => {
       try {
-        const provider = new JsonRpcProvider(env.RPC_URL);
+        const provider = createPublicClient({
+          transport: http(env.RPC_URL)
+        });
 
-        const contract = new Contract(
-          selectedToken.address,
-          JSON.parse(selectedToken.abi),
-          provider
-        );
+        const contract = {
+          address: selectedToken.address,
+          abi: JSON.parse(selectedToken.abi),
+          signerOrProvider: provider,
+        };
 
         const failedRules = [];
         let tokenDecimals = 18;
 
         try {
-          const decimalsFunction = contract['decimals'];
-          if (typeof decimalsFunction === 'function') {
-            const decimalsResult = await decimalsFunction();
-            tokenDecimals = Number(decimalsResult);
-          }
+          const decimalsResult = await provider.readContract({
+            address: selectedToken.address as `0x${string}`,
+            abi: JSON.parse(selectedToken.abi),
+            functionName: 'decimals',
+            args: [],
+          });
+          tokenDecimals = decimalsResult ? Number(decimalsResult) : 18;
         } catch (error) {
           console.warn("Using default decimals (18)");
         }
@@ -73,21 +77,16 @@ export const eligibilityRouter = createTRPCRouter({
               throw new Error(`Function ${rule.functionName} not found in ABI`);
             }
 
-            const contractFunction = contract[rule.functionName];
-            if (typeof contractFunction !== 'function') {
-              throw new Error(`Function ${rule.functionName} not found in contract`);
-            }
-
-            let result;
-            if (functionAbi.inputs?.length === 1 && functionAbi.inputs[0].type === 'address') {
-              result = await contractFunction(addressToCheck);
-            } else {
-              result = await contractFunction();
-            }
+            const result = await provider.readContract({
+              address: selectedToken.address as `0x${string}`,
+              abi: JSON.parse(selectedToken.abi),
+              functionName: rule.functionName,
+              args: functionAbi.inputs?.length === 1 && functionAbi.inputs[0].type === 'address' ? [addressToCheck] : [],
+            });
 
             const value = functionAbi.outputs?.[0]?.type === 'uint8'
               ? Number(result)
-              : parseFloat(formatUnits(result, tokenDecimals));
+              : parseFloat(formatUnits(result as bigint, tokenDecimals));
 
             const isEligible = checkRule(value, rule.value, rule.operator);
 
