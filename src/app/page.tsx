@@ -6,6 +6,11 @@ import { BrowserProvider } from 'ethers';
 import './page.css';
 import { trpc } from '~/utils/trpc';
 import { type Token } from "~/server/db/schema";
+import { AnimatedBackground } from "./_components/animated-background"
+import { Button } from "./_components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "./_components/ui/card"
+import { Input } from "./_components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./_components/ui/select"
 
 
 
@@ -287,198 +292,200 @@ const Quest = () => {
     };
 
     return (
-        <div className="quest-container">
-            <div className="quest-card">
-                <h2>Quest Eligibility Checker</h2>
+        <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-black to-blue-950">
+            <AnimatedBackground />
+            <div className="w-full max-w-md relative">
+                {/* Glow effects */}
+                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
 
-                <div className="token-management-section">
-                    <h3>Token Selection</h3>
-                    {tokens.length === 0 ? (
-                        <div className="no-tokens-message">
-                            <p>No tokens added yet. Please add a token to begin.</p>
-                        </div>
-                    ) : (
-                        <div className="token-selection">
-                            <select
-                                value={selectedToken?.name || ''}
-                                onChange={(e) => {
-                                    const selected = tokens.find(t => t.name === e.target.value);
-                                    setSelectedToken(selected || null);
-                                }}
-                                className="token-select"
-                            >
-                                <option value="">Select a token</option>
-                                {tokens.map((token) => (
-                                    <option key={token.name} value={token.name}>
-                                        {token.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    <button
-                        className="secondary-btn"
-                        onClick={() => setShowAddToken(!showAddToken)}
-                        style={{ marginTop: '1rem' }}
-                    >
-                        {showAddToken ? 'Cancel' : 'Add New Token'}
-                    </button>
-
-                    {showAddToken && (
-                        <div className="add-token-form">
-                            <input
-                                type="text"
-                                placeholder="Token Name"
-                                value={newToken.name}
-                                onChange={(e) => setNewToken({ ...newToken, name: e.target.value })}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Contract Address"
-                                value={newToken.address}
-                                onChange={(e) => setNewToken({ ...newToken, address: e.target.value })}
-                            />
-                            <textarea
-                                placeholder="Contract ABI (JSON format)"
-                                value={newToken.abi}
-                                onChange={(e) => setNewToken({ ...newToken, abi: e.target.value })}
-                                className="abi-input"
-                            />
-                            <button
-                                className="primary-btn"
-                                onClick={addToken}
-                            >
-                                Add Token
-                            </button>
-                        </div>
-                    )}
-
-                    {tokens.length > 0 && (
-                        <div className="token-list">
-                            <h4>Managed Tokens:</h4>
-                            {tokens.map((token) => (
-                                <div key={token.name} className="token-item">
-                                    <span>{token.name}</span>
-                                    <button
-                                        className="remove-token-btn"
-                                        onClick={() => removeToken(token.id)}
-                                        title="Remove Token"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="wallet-section">
-                    {!userAddress ? (
-                        <button onClick={connectWallet} className="primary-btn">
-                            Connect Wallet
-                        </button>
-                    ) : (
-                        <div className="wallet-details">
-                            <div className="wallet-address-container">
-                                <span className="wallet-address-label">Connected Wallet:</span>
-                                <div className="wallet-address-display">
-                                    <span className="full-address">{userAddress}</span>
-                                    <div className="address-actions">
-                                        <button
-                                            onClick={copyAddressToClipboard}
-                                            className="copy-btn"
-                                            title="Copy Address"
-                                        >
-                                            📋
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="wallet-actions">
-                                <button onClick={handleSwitchWallet} className="secondary-btn">
-                                    Switch Wallet
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {userAddress && (
-                        <button
-                            onClick={handleConnectedWalletCheck}
-                            className="primary-btn"
-                            disabled={!userAddress || !selectedToken}
-                        >
-                            Check My Eligibility
-                        </button>
-                    )}
-                </div>
-
-                <form onSubmit={handleInputAddressCheck} className="address-form">
-                    <input
-                        type="text"
-                        placeholder="Enter wallet address to check"
-                        value={inputAddress}
-                        onChange={(e) => setInputAddress(e.target.value)}
-                    />
-                    <button
-                        type="submit"
-                        className="primary-btn"
-                        disabled={!selectedToken}
-                    >
-                        Check Address Eligibility
-                    </button>
-                </form>
-
-                <div className="rules-section">
-                    <h3>Customize Eligibility Rules</h3>
-                    {rules.length === 0 ? (
-                        <p>No rules available. Please select a token first.</p>
-                    ) : (
-                        rules.map((rule, index) => (
-                            <div key={rule.functionName} className="rule-row">
-                                <label>{rule.displayName}:</label>
-                                <select
-                                    value={rule.operator}
-                                    onChange={(e) => {
-                                        const newRules = [...rules];
-                                        newRules[index] = {
-                                            ...rule,
-                                            operator: e.target.value
-                                        };
-                                        setRules(newRules);
+                <Card className="relative bg-black/60 backdrop-blur-xl border-[#0466c8]/50 shadow-2xl">
+                    <CardHeader>
+                        <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
+                            Quest Eligibility Checker
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Token Selection */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-blue-400">Token Selection</h3>
+                            {tokens.length === 0 ? (
+                                <p className="text-sm text-gray-400">
+                                    No tokens added yet. Please add a token to begin.
+                                </p>
+                            ) : (
+                                <Select
+                                    value={selectedToken?.name || ''}
+                                    onValueChange={(value) => {
+                                        const selected = tokens.find(t => t.name === value);
+                                        setSelectedToken(selected || null);
                                     }}
                                 >
-                                    <option value="greater-than-equal">{'≥'}</option>
-                                    <option value="less-than-equal">{'≤'}</option>
-                                    <option value="greater-than">{'>'}</option>
-                                    <option value="less-than">{'<'}</option>
-                                    <option value="equal">{'='}</option>
-                                    <option value="not-equal">{'≠'}</option>
-                                </select>
-                                <input
-                                    type="number"
-                                    value={rule.value}
-                                    onChange={(e) => {
-                                        const newRules = [...rules];
-                                        newRules[index] = {
-                                            ...rule,
-                                            value: Number(e.target.value)
-                                        };
-                                        setRules(newRules);
-                                    }}
-                                />
-                            </div>
-                        ))
-                    )}
-                </div>
+                                    <SelectTrigger className="w-full bg-black/40 border-blue-500/30 text-gray-300">
+                                        <SelectValue placeholder="Select a token" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {tokens.map((token) => (
+                                            <SelectItem key={token.name} value={token.name}>
+                                                {token.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            <Button
+                                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20"
+                                onClick={() => setShowAddToken(!showAddToken)}
+                            >
+                                {showAddToken ? 'Cancel' : 'Add New Token'}
+                            </Button>
+                        </div>
 
-                <div className="status-section">
-                    <p className={`status-message ${status.includes("eligible") ? "status-success" : status ? "status-failure" : ""}`}>
-                        {status}
-                    </p>
-                </div>
+                        {showAddToken && (
+                            <div className="space-y-4">
+                                <Input
+                                    type="text"
+                                    placeholder="Token Name"
+                                    value={newToken.name}
+                                    onChange={(e) => setNewToken({ ...newToken, name: e.target.value })}
+                                    className="bg-black/40 border-blue-500/30 text-gray-300 placeholder:text-gray-500"
+                                />
+                                <Input
+                                    type="text"
+                                    placeholder="Contract Address"
+                                    value={newToken.address}
+                                    onChange={(e) => setNewToken({ ...newToken, address: e.target.value })}
+                                    className="bg-black/40 border-blue-500/30 text-gray-300 placeholder:text-gray-500"
+                                />
+                                <textarea
+                                    placeholder="Contract ABI (JSON format)"
+                                    value={newToken.abi}
+                                    onChange={(e) => setNewToken({ ...newToken, abi: e.target.value })}
+                                    className="w-full min-h-[100px] bg-black/40 border border-blue-500/30 rounded-md p-2 text-gray-300 placeholder:text-gray-500 focus:border-blue-400 transition-colors"
+                                />
+                                <Button
+                                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                                    onClick={addToken}
+                                >
+                                    Add Token
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Wallet Connection */}
+                        <div className="space-y-4">
+                            {!userAddress ? (
+                                <Button
+                                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                                    onClick={connectWallet}
+                                >
+                                    Connect Wallet
+                                </Button>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="p-2 bg-black/40 border border-blue-500/30 rounded-md">
+                                        <p className="text-sm text-gray-400">Connected Wallet:</p>
+                                        <p className="text-sm text-gray-300 break-all">{userAddress}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            className="flex-1 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
+                                            onClick={copyAddressToClipboard}
+                                        >
+                                            Copy Address
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-gradient-to-r from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800 text-white shadow-lg shadow-cyan-500/20"
+                                            onClick={handleConnectedWalletCheck}
+                                        >
+                                            Check Eligibility
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
+                                            onClick={handleSwitchWallet}
+                                        >
+                                            Switch Wallet
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Check Random Address */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-blue-400">Check Any Address</h3>
+                            <form onSubmit={handleInputAddressCheck} className="space-y-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Enter wallet address to check"
+                                    value={inputAddress}
+                                    onChange={(e) => setInputAddress(e.target.value)}
+                                    className="w-full bg-black/40 border-blue-500/30 text-gray-300 placeholder:text-gray-500"
+                                />
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white shadow-lg shadow-green-500/20"
+                                    disabled={!selectedToken}
+                                >
+                                    Check Address Eligibility
+                                </Button>
+                            </form>
+                        </div>
+
+                        {/* Eligibility Rules */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-blue-400">
+                                Customize Eligibility Rules
+                            </h3>
+                            {rules.length === 0 ? (
+                                <p className="text-sm text-gray-400">
+                                    No rules available. Please select a token first.
+                                </p>
+                            ) : (
+                                rules.map((rule, index) => (
+                                    <div key={rule.functionName} className="flex items-center gap-2">
+                                        <span className="text-gray-300">{rule.displayName}:</span>
+                                        <Select
+                                            value={rule.operator}
+                                            onValueChange={(value) => {
+                                                const newRules = [...rules];
+                                                newRules[index] = { ...rule, operator: value };
+                                                setRules(newRules);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-24 bg-black/40 border-blue-500/30 text-gray-300">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="greater-than-equal">≥</SelectItem>
+                                                <SelectItem value="less-than-equal">≤</SelectItem>
+                                                <SelectItem value="greater-than">{'>'}</SelectItem>
+                                                <SelectItem value="less-than">{'<'}</SelectItem>
+                                                <SelectItem value="equal">=</SelectItem>
+                                                <SelectItem value="not-equal">≠</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input
+                                            type="number"
+                                            value={rule.value}
+                                            onChange={(e) => {
+                                                const newRules = [...rules];
+                                                newRules[index] = { ...rule, value: Number(e.target.value) };
+                                                setRules(newRules);
+                                            }}
+                                            className="w-24 bg-black/40 border-blue-500/30 text-gray-300"
+                                        />
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {status && (
+                            <div className={`p-4 rounded-md ${status.includes("eligible") ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+                                {status}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
