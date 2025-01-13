@@ -10,6 +10,9 @@ import { Button } from "./_components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./_components/ui/card"
 import { Input } from "./_components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./_components/ui/select"
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { injected } from '@wagmi/connectors'
+
 
 
 
@@ -79,6 +82,10 @@ const Quest = () => {
     const [inputAddress, setInputAddress] = useState("");
     const [status, setStatus] = useState("");
 
+
+    const { address, isConnected } = useAccount();
+    const { connect } = useConnect();
+    const { disconnect } = useDisconnect();
 
     // Token management states
     const [tokens, setTokens] = useState<Token[]>([]);
@@ -150,6 +157,15 @@ const Quest = () => {
         }
     }, [selectedToken]);
 
+    useEffect(() => {
+        if (address) {
+            setUserAddress(address);
+            setStatus("");
+        } else {
+            setUserAddress("");
+        }
+    }, [address]);
+
     const addToken = async () => {
         try {
             // Validate inputs
@@ -210,31 +226,27 @@ const Quest = () => {
     };
 
     const connectWallet = async () => {
-        if (window.ethereum) {
-            try {
-                const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-                setUserAddress(accounts[0]);
-                setStatus("");
-            } catch (error) {
-                console.error("Error connecting wallet:", error);
-                setStatus("Failed to connect wallet. Please try again.");
-            }
-        } else {
-            alert("MetaMask not detected. Please install MetaMask to connect.");
+        try {
+            await connect({
+                connector: injected()
+            });
+        } catch (error) {
+            console.error("Error connecting wallet:", error);
+            setStatus("Failed to connect wallet. Please try again.");
         }
     };
 
     const handleSwitchWallet = async () => {
         try {
-            if (!window.ethereum) throw new Error("No ethereum provider found");
-            await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
-            connectWallet();
+            await disconnect();
+            await connect({
+                connector: injected()
+            });
         } catch (error) {
             console.error("Error switching wallet:", error);
             setStatus("An error occurred while switching wallet. Please try again.");
         }
     };
-
 
 
     const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
@@ -311,24 +323,34 @@ const Quest = () => {
                                     No tokens added yet. Please add a token to begin.
                                 </p>
                             ) : (
-                                <Select
-                                    value={selectedToken?.name || ''}
-                                    onValueChange={(value) => {
-                                        const selected = tokens.find(t => t.name === value);
-                                        setSelectedToken(selected || null);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-full bg-black/40 border-blue-500/30 text-gray-300">
-                                        <SelectValue placeholder="Select a token" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {tokens.map((token) => (
-                                            <SelectItem key={token.name} value={token.name}>
-                                                {token.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <>
+                                    <Select
+                                        value={selectedToken?.name || ''}
+                                        onValueChange={(value) => {
+                                            const selected = tokens.find(t => t.name === value);
+                                            setSelectedToken(selected || null);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full bg-black/40 border-blue-500/30 text-gray-300">
+                                            <SelectValue placeholder="Select a token" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {tokens.map((token) => (
+                                                <SelectItem key={token.name} value={token.name}>
+                                                    {token.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {selectedToken && (
+                                        <Button
+                                            className="w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
+                                            onClick={() => removeToken(selectedToken.id)}
+                                        >
+                                            Remove Selected Token
+                                        </Button>
+                                    )}
+                                </>
                             )}
                             <Button
                                 className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20"
