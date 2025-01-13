@@ -12,6 +12,7 @@ import { Input } from "./_components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./_components/ui/select"
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { injected } from '@wagmi/connectors'
+import { SignInButton } from "./_components/ui/sign-inButton";
 
 
 
@@ -394,12 +395,15 @@ const Quest = () => {
                         {/* Wallet Connection */}
                         <div className="space-y-4">
                             {!userAddress ? (
-                                <Button
-                                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
-                                    onClick={connectWallet}
-                                >
-                                    Connect Wallet
-                                </Button>
+                                <div className="space-y-2">
+                                    <Button
+                                        className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                                        onClick={connectWallet}
+                                    >
+                                        Connect Wallet
+                                    </Button>
+                                    <SignInButton />
+                                </div>
                             ) : (
                                 <div className="space-y-2">
                                     <div className="p-2 bg-black/40 border border-blue-500/30 rounded-md">
@@ -426,6 +430,7 @@ const Quest = () => {
                                             Switch Wallet
                                         </Button>
                                     </div>
+                                    <SignInButton />
                                 </div>
                             )}
                         </div>
