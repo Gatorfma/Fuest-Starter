@@ -6,6 +6,7 @@ import { WagmiProvider, createConfig, http } from 'wagmi'
 import { mainnet } from 'wagmi/chains'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { TRPCReactProvider } from "~/trpc/react";
+import { AuthProvider } from './_components/AuthContext';
 
 const config = createConfig({
   chains: [mainnet],
@@ -24,7 +25,11 @@ export default function RootLayout({
       <body>
         <WagmiProvider config={config}>
           <QueryClientProvider client={queryClient}>
-            <TRPCReactProvider>{children}</TRPCReactProvider>
+            <TRPCReactProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </TRPCReactProvider>
           </QueryClientProvider>
         </WagmiProvider>
       </body>

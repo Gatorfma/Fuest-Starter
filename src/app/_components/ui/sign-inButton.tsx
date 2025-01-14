@@ -9,25 +9,19 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "~/app/_components/ui/dropdown-menu";
+import { useAuth } from '../AuthContext';
 
 export function SignInButton() {
+    const { signedInAddress, setAuthState } = useAuth();
     const { address, chain } = useAccount();
     const { signMessageAsync } = useSignMessage();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [signedInAddress, setSignedInAddress] = useState<string | null>(null);
 
 
     const prepareSiweMessage = api.auth.prepareSiweMessage.useMutation();
     const verifySiweMessage = api.auth.verifySiweMessage.useMutation();
 
-    // Load signed-in status from localStorage on component mount
-    useEffect(() => {
-        const stored = localStorage.getItem('siwe_address');
-        if (stored) {
-            setSignedInAddress(stored);
-        }
-    }, []);
 
     const handleSignIn = async () => {
         try {
@@ -55,8 +49,7 @@ export function SignInButton() {
             });
 
             if (verification.success) {
-                setSignedInAddress(verification.address);
-                localStorage.setItem('siwe_address', verification.address);
+                setAuthState(verification.address);
             }
         } catch (error: any) {
             console.error("Error during sign-in:", error);
@@ -67,8 +60,7 @@ export function SignInButton() {
     };
 
     const handleSignOut = () => {
-        setSignedInAddress(null);
-        localStorage.removeItem('siwe_address');
+        setAuthState(null);
     };
 
     // Function to truncate address for display
