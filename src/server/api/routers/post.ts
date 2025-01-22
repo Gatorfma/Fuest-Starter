@@ -19,6 +19,9 @@ export const postsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.session) {
+        throw new Error("Session is null");
+      }
       await ctx.db.insert(posts).values({
         name: input.name,
         createdById: ctx.session.user.id,
