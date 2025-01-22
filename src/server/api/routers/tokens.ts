@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import { db } from "~/server/db";
 import { tokens } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -9,7 +9,7 @@ export const tokensRouter = createTRPCRouter({
     return await db.select().from(tokens);
   }),
 
-  addToken: publicProcedure
+  addToken: protectedProcedure
     .input(z.object({
       name: z.string(),
       address: z.string(),
@@ -24,7 +24,7 @@ export const tokensRouter = createTRPCRouter({
       return result[0];
     }),
 
-  deleteToken: publicProcedure
+  deleteToken: protectedProcedure
     .input(z.number())
     .mutation(async ({ input }) => {
       await db.delete(tokens).where(eq(tokens.id, input));

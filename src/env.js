@@ -24,6 +24,7 @@ export const env = createEnv({
     ),
     TWITTER_CLIENT_ID: z.string(),
     TWITTER_CLIENT_SECRET: z.string(),
+    JWT_SECRET: z.string().min(32),
   },
 
   /**
@@ -46,6 +47,7 @@ export const env = createEnv({
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     TWITTER_CLIENT_ID: process.env.TWITTER_CLIENT_ID,
     TWITTER_CLIENT_SECRET: process.env.TWITTER_CLIENT_SECRET,
+    JWT_SECRET: process.env.JWT_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

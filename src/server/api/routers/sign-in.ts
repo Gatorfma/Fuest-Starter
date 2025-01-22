@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { SiweMessage, generateNonce } from "siwe";
+import { SiweMessage } from "siwe";
 import { TRPCError } from "@trpc/server";
+import { createJWT, jwtCookieOptions } from "~/server/utils/jwt";
+import { cookies } from 'next/headers';
 
 export const authRouter = createTRPCRouter({
     prepareSiweMessage: publicProcedure
@@ -41,37 +43,39 @@ export const authRouter = createTRPCRouter({
             message: z.string(),
             signature: z.string(),
         }))
-        .mutation(async ({ input }) => {
+        .mutation(async ({ input, ctx }) => {
             try {
-                console.log("Verifying SIWE message:", {
-                    message: input.message,
-                    signatureLength: input.signature.length
-                });
-
                 const siweMessage = new SiweMessage(input.message);
-
-                // Log the parsed message for debugging
-                console.log("Parsed SIWE message:", {
-                    domain: siweMessage.domain,
-                    address: siweMessage.address,
-                    chainId: siweMessage.chainId,
-                    nonce: siweMessage.nonce,
-                    issuedAt: siweMessage.issuedAt
-                });
 
                 const fields = await siweMessage.verify({
                     signature: input.signature,
-                    domain: process.env.NEXT_PUBLIC_DOMAIN || "localhost:3000", // Must match the domain used in prepareSiweMessage
+                    domain: process.env.NEXT_PUBLIC_DOMAIN || "localhost:3000",
                     time: new Date().toISOString(),
                 });
 
                 if (!fields.success) {
-                    console.error("SIWE verification failed:", fields);
                     throw new TRPCError({
                         code: "BAD_REQUEST",
                         message: "Signature verification failed",
                     });
                 }
+
+                const jwt = await createJWT(fields.data.address);
+
+                const cookieStore = cookies();
+                cookieStore.set('auth-token', jwt, {
+                    ...jwtCookieOptions,
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    path: '/',
+                });
+
+                console.log('Setting cookie with JWT:', {
+                    tokenLength: jwt.length,
+                    address: fields.data.address,
+                    cookieOptions: jwtCookieOptions
+                });
 
                 return {
                     address: fields.data.address,
@@ -85,5 +89,10 @@ export const authRouter = createTRPCRouter({
                     cause: error,
                 });
             }
+        }),
+    signOut: publicProcedure
+        .mutation(async () => {
+            cookies().delete('auth-token');
+            return { success: true };
         }),
 });

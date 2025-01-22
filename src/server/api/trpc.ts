@@ -4,11 +4,13 @@
  * 2. You want to create a new middleware or type of procedure (see Part 3).
  */
 import { initTRPC, TRPCError } from "@trpc/server";
+import { cookies } from "next/headers";
 import superjson from "superjson";
 import { z, ZodError } from "zod";
 
 import { getServerAuthSession } from "~/server/auth";
 import { db } from "~/server/db";
+import { verifyJWT } from "~/server/utils/jwt";
 
 /**
  * Storage for ABI and contract addresses.
@@ -50,6 +52,27 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
  * 3. ROUTER & PROCEDURE
  */
 
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+  const cookieStore = cookies();
+  const authToken = cookieStore.get("auth-token")?.value;
+
+  if (!authToken) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  const verified = await verifyJWT(authToken);
+  if (!verified.success) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: { address: verified.address }
+    }
+  });
+});
+
 /**
  * Public procedure (unauthenticated).
  */
@@ -68,16 +91,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  */
 export const protectedProcedure = t.procedure
   .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.session || !ctx.session.user) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    return next({
-      ctx: {
-        session: { ...ctx.session, user: ctx.session.user },
-      },
-    });
-  });
+  .use(authMiddleware);
 
 /**
  * Factory to create callers for any router and context.
@@ -90,3 +104,4 @@ export const createCallerFactory = (router: ReturnType<typeof t.router>, ctx: an
  * Function to create a tRPC router.
  */
 export const createTRPCRouter = t.router;
+export const authenticatedProcedure = t.procedure.use(authMiddleware);

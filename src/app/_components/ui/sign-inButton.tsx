@@ -21,6 +21,7 @@ export function SignInButton() {
 
     const prepareSiweMessage = api.auth.prepareSiweMessage.useMutation();
     const verifySiweMessage = api.auth.verifySiweMessage.useMutation();
+    const SiweSignOut = api.auth.signOut.useMutation();
 
 
     const handleSignIn = async () => {
@@ -59,7 +60,8 @@ export function SignInButton() {
         }
     };
 
-    const handleSignOut = () => {
+    const handleSignOut = async () => {
+        await SiweSignOut.mutateAsync();
         setAuthState(null);
     };
 

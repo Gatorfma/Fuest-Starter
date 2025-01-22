@@ -14,6 +14,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { injected } from '@wagmi/connectors'
 import { SignInButton } from "./_components/ui/sign-inButton";
 import { useAuth } from './_components/AuthContext';
+import { CookieDebug } from './_components/debug/CookieDebug';
 
 
 
@@ -424,6 +425,7 @@ const Quest = () => {
                                         Connect Wallet
                                     </Button>
                                     <SignInButton />
+                                    {process.env.NODE_ENV === 'development' && <CookieDebug />}
                                 </div>
                             ) : (
                                 <div className="space-y-2">
