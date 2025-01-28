@@ -10,13 +10,10 @@ import { Button } from "./_components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./_components/ui/card"
 import { Input } from "./_components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./_components/ui/select"
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from '@wagmi/connectors'
 import { SignInButton } from "./_components/ui/sign-inButton";
 import { useAuth } from './_components/AuthContext';
 import { CookieDebug } from './_components/debug/CookieDebug';
-
-
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 
 
 interface AbiFunction {
@@ -75,22 +72,57 @@ const parseAbiForRules = (abi: string): AbiFunction[] => {
 // Function to format function name for display
 const formatFunctionName = (name: string): string => {
     return name
-        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
         .trim();
+};
+
+const WalletConnect = () => {
+    const { connect, connectors } = useConnect();
+    const { disconnect } = useDisconnect();
+    const { isConnected } = useAccount();
+
+    if (isConnected) {
+        return (
+            <div className="flex gap-2">
+                <Button
+                    className="flex-1 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
+                    onClick={() => disconnect()}
+                >
+                    Disconnect
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-2">
+            {connectors.map((connector) => (
+                <Button
+                    key={connector.id}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                    onClick={() => connect({ connector })}
+                    disabled={!connector.ready}
+                >
+                    {connector.name}
+                </Button>
+            ))}
+        </div>
+    );
 };
 
 const Quest = () => {
     const [userAddress, setUserAddress] = useState("");
+    const [showWalletSelect, setShowWalletSelect] = useState(false);
     const [inputAddress, setInputAddress] = useState("");
     const [status, setStatus] = useState("");
 
 
     const { address, isConnected } = useAccount();
-    const { connect } = useConnect();
     const { disconnect } = useDisconnect();
 
     const { isAuthenticated, setAuthState } = useAuth();
+    const [showWalletOptions, setShowWalletOptions] = useState(false);
 
 
     // Token management states
@@ -238,29 +270,6 @@ const Quest = () => {
                     console.error('Failed to copy address:', err);
                     setStatus('Failed to copy address');
                 });
-        }
-    };
-
-    const connectWallet = async () => {
-        try {
-            await connect({
-                connector: injected()
-            });
-        } catch (error) {
-            console.error("Error connecting wallet:", error);
-            setStatus("Failed to connect wallet. Please try again.");
-        }
-    };
-
-    const handleSwitchWallet = async () => {
-        try {
-            await disconnect();
-            await connect({
-                connector: injected()
-            });
-        } catch (error) {
-            console.error("Error switching wallet:", error);
-            setStatus("An error occurred while switching wallet. Please try again.");
         }
     };
 
@@ -416,46 +425,10 @@ const Quest = () => {
 
                         {/* Wallet Connection */}
                         <div className="space-y-4">
-                            {!userAddress ? (
-                                <div className="space-y-2">
-                                    <Button
-                                        className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
-                                        onClick={connectWallet}
-                                    >
-                                        Connect Wallet
-                                    </Button>
-                                    <SignInButton />
-                                    {process.env.NODE_ENV === 'development' && <CookieDebug />}
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    <div className="p-2 bg-black/40 border border-blue-500/30 rounded-md">
-                                        <p className="text-sm text-gray-400">Connected Wallet:</p>
-                                        <p className="text-sm text-gray-300 break-all">{userAddress}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            className="flex-1 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
-                                            onClick={copyAddressToClipboard}
-                                        >
-                                            Copy Address
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-gradient-to-r from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800 text-white shadow-lg shadow-cyan-500/20"
-                                            onClick={handleConnectedWalletCheck}
-                                        >
-                                            Check Eligibility
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
-                                            onClick={handleSwitchWallet}
-                                        >
-                                            Switch Wallet
-                                        </Button>
-                                    </div>
-                                    <SignInButton />
-                                </div>
-                            )}
+                            <h3 className="text-lg font-semibold text-blue-400">Connect Wallet</h3>
+                            <WalletConnect />
+                            <SignInButton />
+                            {process.env.NODE_ENV === 'development' && <CookieDebug />}
                         </div>
 
                         {/* Check Random Address */}
