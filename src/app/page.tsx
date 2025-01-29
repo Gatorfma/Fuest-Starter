@@ -86,10 +86,10 @@ const WalletConnect = () => {
         return (
             <div className="flex gap-2">
                 <Button
-                    className="flex-1 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
+                    className="flex-1 bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20 transition-all duration-200 hover:scale-105"
                     onClick={() => disconnect()}
                 >
-                    Disconnect
+                    Disconnect Wallet
                 </Button>
             </div>
         );
@@ -100,11 +100,11 @@ const WalletConnect = () => {
             {connectors.map((connector) => (
                 <Button
                     key={connector.id}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => connect({ connector })}
                     disabled={!connector.ready}
                 >
-                    {connector.name}
+                    Connect {connector.name}
                 </Button>
             ))}
         </div>
@@ -426,9 +426,55 @@ const Quest = () => {
                         {/* Wallet Connection */}
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold text-blue-400">Connect Wallet</h3>
-                            <WalletConnect />
-                            <SignInButton />
-                            {process.env.NODE_ENV === 'development' && <CookieDebug />}
+                            <div className="flex flex-col gap-2">
+                                <Button
+                                    className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white shadow-lg shadow-blue-500/20"
+                                    onClick={() => setShowWalletOptions(!showWalletOptions)}
+                                >
+                                    {isConnected ? 'Manage Wallet Connection' : 'Connect Wallet'}
+                                </Button>
+                                {showWalletOptions && (
+                                    <div className="mt-2">
+                                        <WalletConnect />
+                                        <SignInButton />
+                                        {process.env.NODE_ENV === 'development' && <CookieDebug />}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Connected Wallet Check */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-blue-400">Check Connected Wallet</h3>
+                            {userAddress ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            type="text"
+                                            value={userAddress}
+                                            readOnly
+                                            className="flex-1 bg-black/40 border-blue-500/30 text-gray-300"
+                                        />
+                                        <Button
+                                            onClick={copyAddressToClipboard}
+                                            className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
+                                        >
+                                            Copy
+                                        </Button>
+                                    </div>
+                                    <Button
+                                        onClick={handleConnectedWalletCheck}
+                                        className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white shadow-lg shadow-green-500/20"
+                                        disabled={!selectedToken}
+                                    >
+                                        Check My Wallet Eligibility
+                                    </Button>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-400">
+                                    Please connect your wallet to check eligibility
+                                </p>
+                            )}
                         </div>
 
                         {/* Check Random Address */}
