@@ -1,69 +1,118 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useAccount, useSignMessage } from 'wagmi';
+import { SiweMessage } from 'siwe';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    signedInAddress: string | null;
-    setAuthState: (address: string | null) => void;
+    signIn: () => Promise<void>;
+    signOut: () => Promise<void>;
+    loading: boolean;
+    error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const [signedInAddress, setSignedInAddress] = useState<string | null>(null);
+interface AuthProviderProps {
+    children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { address, isConnected } = useAccount();
+    const { signMessageAsync } = useSignMessage();
 
     useEffect(() => {
-        // Initial check for authentication
-        const stored = localStorage.getItem('siwe_address');
-        if (stored) {
-            setSignedInAddress(stored);
-        }
+        checkAuthStatus();
+    }, [address, isConnected]);
 
-        // Add event listener for storage changes
-        const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === 'siwe_address') {
-                setSignedInAddress(event.newValue);
+    const checkAuthStatus = async () => {
+        try {
+            const response = await fetch('/api/auth/verify');
+            const data = await response.json();
+            setIsAuthenticated(data.authenticated);
+        } catch (err) {
+            setError('Failed to verify authentication status');
+            setIsAuthenticated(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const signIn = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            if (!address || !isConnected) {
+                throw new Error('Wallet not connected');
             }
-        };
 
-        // Add custom event listener for immediate updates
-        const handleAuthChange = (event: CustomEvent) => {
-            setSignedInAddress(event.detail.address);
-        };
+            // Get nonce
+            const nonceRes = await fetch('/api/auth/nonce');
+            const nonce = await nonceRes.text();
 
-        window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('authStateChange', handleAuthChange as EventListener);
+            // Create SIWE message
+            const message = new SiweMessage({
+                domain: window.location.host,
+                address,
+                statement: 'Sign in with Ethereum to the app.',
+                uri: window.location.origin,
+                version: '1',
+                chainId: 1,
+                nonce
+            });
 
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('authStateChange', handleAuthChange as EventListener);
-        };
-    }, []);
+            // Sign message
+            const signature = await signMessageAsync({
+                message: message.prepareMessage()
+            });
 
-    const setAuthState = (address: string | null) => {
-        setSignedInAddress(address);
-        if (address) {
-            localStorage.setItem('siwe_address', address);
-        } else {
-            localStorage.removeItem('siwe_address');
+            // Verify signature
+            const verifyRes = await fetch('/api/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message, signature }),
+            });
+
+            if (!verifyRes.ok) throw new Error('Failed to verify signature');
+
+            setIsAuthenticated(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to sign in');
+            setIsAuthenticated(false);
+        } finally {
+            setLoading(false);
         }
+    };
 
-        // Dispatch custom event for immediate updates
-        const event = new CustomEvent('authStateChange', {
-            detail: { address }
-        });
-        window.dispatchEvent(event);
+    const signOut = async () => {
+        try {
+            setLoading(true);
+            await fetch('/api/auth/signout', { method: 'POST' });
+            setIsAuthenticated(false);
+        } catch (err) {
+            setError('Failed to sign out');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const value = {
+        isAuthenticated,
+        signIn,
+        signOut,
+        loading,
+        error
     };
 
     return (
-        <AuthContext.Provider
-            value={{
-                isAuthenticated: !!signedInAddress,
-                signedInAddress,
-                setAuthState,
-            }}
-        >
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

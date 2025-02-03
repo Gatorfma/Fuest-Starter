@@ -30,6 +30,8 @@
     "@wagmi/core": "^2.16.3",
     "@walletconnect/ethereum-provider": "^2.17.3",
     "@walletconnect/universal-provider": "^2.17.3",
+    "@web3modal/ethereum": "^2.7.1",
+    "@web3modal/wagmi": "^5.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.33.0",

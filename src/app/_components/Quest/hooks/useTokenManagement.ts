@@ -1,7 +1,9 @@
+"use client";
 import { useState, useEffect, Dispatch, SetStateAction } from 'react';
-import { trpc } from '~/utils/trpc';
 import { type Token } from '../types';
 import { useAuth } from '../../AuthContext';
+import { api } from '~/trpc/react';
+
 
 interface TokenManagementReturn {
     tokens: Token[];
@@ -18,7 +20,7 @@ interface TokenManagementReturn {
     isAuthenticated: boolean;
 }
 
-export const useTokenManagement = (): TokenManagementReturn => {
+export const useTokenManagement = () => {
     const [tokens, setTokens] = useState<Token[]>([]);
     const [selectedToken, setSelectedToken] = useState<Token | null>(null);
     const [newToken, setNewToken] = useState<Token>({
@@ -30,11 +32,11 @@ export const useTokenManagement = (): TokenManagementReturn => {
     const [showAddToken, setShowAddToken] = useState(false);
     const [status, setStatus] = useState("");
     const { isAuthenticated } = useAuth();
-    const utils = trpc.useContext();
 
-    const { data: dbTokens } = trpc.tokens.getAll.useQuery();
+    const utils = api.useContext();
 
-    const addTokenMutation = trpc.tokens.addToken.useMutation({
+
+    const addTokenMutation = api.tokens.addToken.useMutation({
         onSuccess: (data) => {
             if (data) {
                 setSelectedToken(data);
@@ -51,7 +53,7 @@ export const useTokenManagement = (): TokenManagementReturn => {
         }
     });
 
-    const deleteTokenMutation = trpc.tokens.deleteToken.useMutation({
+    const deleteTokenMutation = api.tokens.deleteToken.useMutation({
         onSuccess: () => {
             utils.tokens.getAll.invalidate();
         },
@@ -109,6 +111,8 @@ export const useTokenManagement = (): TokenManagementReturn => {
             setStatus(`Error removing token: ${error.message}`);
         }
     };
+
+    const { data: dbTokens } = api.tokens.getAll.useQuery();
 
     useEffect(() => {
         if (dbTokens) {

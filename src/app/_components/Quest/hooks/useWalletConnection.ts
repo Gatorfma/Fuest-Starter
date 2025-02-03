@@ -5,10 +5,9 @@ import { injected } from '@wagmi/connectors';
 interface WalletConnectionReturn {
     userAddress: string;
     isConnected: boolean;
-    connectWallet: () => Promise<void>;
-    handleSwitchWallet: () => Promise<void>;
+    connect: () => Promise<void>; 
+    switchWallet: () => Promise<void>;
     copyAddressToClipboard: () => void;
-    handleConnectedWalletCheck: () => void;
     status: string;
     setStatus: Dispatch<SetStateAction<string>>;
 }
@@ -17,7 +16,7 @@ export const useWalletConnection = (): WalletConnectionReturn => {
     const [userAddress, setUserAddress] = useState("");
     const [status, setStatus] = useState("");
     const { address, isConnected } = useAccount();
-    const { connect } = useConnect();
+    const { connect: wagmiConnect } = useConnect();
     const { disconnect } = useDisconnect();
 
     useEffect(() => {
@@ -29,19 +28,19 @@ export const useWalletConnection = (): WalletConnectionReturn => {
         }
     }, [address]);
 
-    const connectWallet = async () => {
+    const connect = async () => {
         try {
-            await connect({ connector: injected() });
+            await wagmiConnect({ connector: injected() });
         } catch (error) {
             console.error("Error connecting wallet:", error);
             setStatus("Failed to connect wallet. Please try again.");
         }
     };
 
-    const handleSwitchWallet = async () => {
+    const switchWallet = async () => {
         try {
             await disconnect();
-            await connect({ connector: injected() });
+            await wagmiConnect({ connector: injected() });
         } catch (error) {
             console.error("Error switching wallet:", error);
             setStatus("An error occurred while switching wallet. Please try again.");
@@ -62,20 +61,12 @@ export const useWalletConnection = (): WalletConnectionReturn => {
         }
     };
 
-    const handleConnectedWalletCheck = () => {
-        if (!userAddress) {
-            setStatus("Please connect your wallet first.");
-            return;
-        }
-    };
-
     return {
         userAddress,
         isConnected,
-        connectWallet,
-        handleSwitchWallet,
+        connect,
+        switchWallet,
         copyAddressToClipboard,
-        handleConnectedWalletCheck,
         status,
         setStatus
     };

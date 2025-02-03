@@ -10,8 +10,8 @@ import { AddressChecker } from './_components/Quest/components/AddressChecker';
 import { EligibilityRules } from './_components/Quest/components/EligibilityRules';
 import { StatusMessage } from './_components/Quest/components/StatusMessage';
 import { useTokenManagement } from './_components/Quest/hooks/useTokenManagement';
-import { useWalletConnection } from './_components/Quest/hooks/useWalletConnection';
 import { useEligibilityCheck } from './_components/Quest/hooks/useEligibilityCheck';
+
 
 const Quest = () => {
     const {
@@ -29,14 +29,6 @@ const Quest = () => {
         isAuthenticated
     } = useTokenManagement();
 
-    const {
-        userAddress,
-        connectWallet,
-        handleSwitchWallet,
-        copyAddressToClipboard,
-        status: walletStatus,
-        setStatus: setWalletStatus
-    } = useWalletConnection();
 
     const {
         rules,
@@ -53,21 +45,13 @@ const Quest = () => {
         updateRules(selectedToken);
     }, [selectedToken]);
 
-    const handleConnectedWalletCheck = () => {
-        if (!userAddress) {
-            setWalletStatus("Please connect your wallet first.");
-            return;
-        }
-        checkEligibility(selectedToken, userAddress);
-    };
-
     const handleInputAddressCheck = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         checkEligibility(selectedToken, inputAddress);
     };
 
-    // Combine all status messages, showing the most recent one
-    const status = tokenStatus || walletStatus || eligibilityStatus;
+
+    const status = tokenStatus || eligibilityStatus;
 
     return (
         <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-black to-blue-950">
@@ -97,13 +81,8 @@ const Quest = () => {
                                 addToken={addToken}
                             />
                         )}
-                        <WalletConnection
-                            userAddress={userAddress}
-                            connectWallet={connectWallet}
-                            handleConnectedWalletCheck={handleConnectedWalletCheck}
-                            handleSwitchWallet={handleSwitchWallet}
-                            copyAddressToClipboard={copyAddressToClipboard}
-                        />
+                        {/*WalletConnection*/}
+                        <WalletConnection />
                         <AddressChecker
                             inputAddress={inputAddress}
                             setInputAddress={setInputAddress}
