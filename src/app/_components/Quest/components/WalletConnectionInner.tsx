@@ -85,8 +85,6 @@ export const WalletConnectionInner = () => {
                             ))}
                         </div>
                     )}
-
-                    <SignInButton />
                     {process.env.NODE_ENV === 'development' && <CookieDebug />}
                 </div>
             ) : (
@@ -115,6 +113,8 @@ export const WalletConnectionInner = () => {
                     </div>
                 </div>
             )}
+            {/* Sign In Button moved outside of the conditional rendering */}
+            <SignInButton />
         </div>
     );
 };

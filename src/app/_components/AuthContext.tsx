@@ -10,6 +10,8 @@ interface AuthContextType {
     signOut: () => Promise<void>;
     loading: boolean;
     error: string | null;
+    signedInAddress: string | null;
+    setAuthState: (address: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +26,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [error, setError] = useState<string | null>(null);
     const { address, isConnected } = useAccount();
     const { signMessageAsync } = useSignMessage();
+    const [signedInAddress, setSignedInAddress] = useState<string | null>(null);
+
+
+    const setAuthState = (address: string | null) => {
+        setSignedInAddress(address);
+        setIsAuthenticated(!!address);
+    };
 
     useEffect(() => {
         checkAuthStatus();
@@ -108,7 +117,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signIn,
         signOut,
         loading,
-        error
+        error,
+        signedInAddress,
+        setAuthState
     };
 
     return (

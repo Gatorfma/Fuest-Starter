@@ -13,7 +13,7 @@ import { useAuth } from '../AuthContext';
 
 export function SignInButton() {
     const { signedInAddress, setAuthState } = useAuth();
-    const { address, chain } = useAccount();
+    const { address, chain, isConnected } = useAccount();
     const { signMessageAsync } = useSignMessage();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -23,14 +23,26 @@ export function SignInButton() {
     const verifySiweMessage = api.auth.verifySiweMessage.useMutation();
     const SiweSignOut = api.auth.signOut.useMutation();
 
+    useEffect(() => {
+        console.log('Wallet State:', {
+            address,
+            chainId: chain?.id,
+            isConnected
+        });
+    }, [address, chain, isConnected]);
+
 
     const handleSignIn = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            if (!address || !chain) {
-                throw new Error("Wallet not connected");
+            if (!isConnected || !address) {
+                throw new Error("Please connect your wallet first");
+            }
+
+            if (!chain) {
+                throw new Error("Please switch to a supported network (Mainnet, Sepolia, or Polygon)");
             }
 
             const nonce = generateNonce();
@@ -58,6 +70,13 @@ export function SignInButton() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const getButtonText = () => {
+        if (loading) return "Signing in...";
+        if (!isConnected) return "Connect wallet first";
+        if (!chain) return "Switch to supported network";
+        return "Sign-in with Ethereum";
     };
 
     const handleSignOut = async () => {
@@ -104,14 +123,19 @@ export function SignInButton() {
         <div className="space-y-2">
             <Button
                 onClick={handleSignIn}
-                disabled={loading || !address}
+                disabled={loading || !isConnected || !chain}
                 className="w-full bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white shadow-lg shadow-indigo-500/20"
             >
-                {loading ? "Signing in..." : "Sign-in with Ethereum"}
+                {getButtonText()}
             </Button>
             {error && (
                 <p className="text-sm text-red-500">
                     {error}
+                </p>
+            )}
+            {isConnected && !chain && (
+                <p className="text-xs text-yellow-500">
+                    Please switch to a supported network (Mainnet, Sepolia, or Polygon)
                 </p>
             )}
         </div>
