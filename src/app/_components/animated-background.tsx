@@ -27,7 +27,7 @@ export function AnimatedBackground() {
         // Animation
         function animate() {
             if (!canvas) return
-            
+
             time += 0.002
             ctx.fillStyle = '#000814' // Dark blue background
             ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -59,6 +59,6 @@ export function AnimatedBackground() {
         }
     }, [])
 
-    return <canvas ref={canvasRef} className="fixed inset-0 -z-10" />
+    return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full -z-10" />;
 }
 

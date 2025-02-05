@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from 'react';
-import { AnimatedBackground } from "./_components/animated-background";
 import { Card, CardContent, CardHeader, CardTitle } from "./_components/ui/card";
 import { TokenSelection } from './_components/Quest/components/TokenSelection';
 import { AddTokenForm } from './_components/Quest/components/AddTokenForm';
@@ -36,7 +35,7 @@ const Quest = () => {
         inputAddress,
         setInputAddress,
         status: eligibilityStatus,
-        setStatus: setEligibilityStatus,
+
         checkEligibility,
         updateRules
     } = useEligibilityCheck();
@@ -54,50 +53,58 @@ const Quest = () => {
     const status = tokenStatus || eligibilityStatus;
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-black to-blue-950">
-            <AnimatedBackground />
-            <div className="w-full max-w-md relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
-                <Card className="relative bg-black/60 backdrop-blur-xl border-[#0466c8]/50 shadow-2xl">
-                    <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
-                            Quest Eligibility Checker
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <TokenSelection
-                            tokens={tokens}
-                            selectedToken={selectedToken}
-                            setSelectedToken={setSelectedToken}
-                            showAddToken={showAddToken}
-                            setShowAddToken={setShowAddToken}
-                            removeToken={removeToken}
-                            isAuthenticated={isAuthenticated}
-                        />
-                        {showAddToken && (
-                            <AddTokenForm
-                                newToken={newToken}
-                                setNewToken={setNewToken}
-                                addToken={addToken}
+        <main className="relative min-h-screen w-full bg-gradient-to-b from-[#000814] via-[#001d3d] to-[#000814]">
+            <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center px-4 py-8">
+                <div className="w-full max-w-md relative">
+                    {/* Gradient border effect */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 rounded-lg blur opacity-75" />
+
+                    {/* Main Card */}
+                    <Card className="relative bg-black/60 backdrop-blur-xl border-[#0466c8]/50 shadow-2xl">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
+                                Quest Eligibility Checker
+                            </CardTitle>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4">
+                            <WalletConnection />
+
+                            <div className="space-y-4">
+                                <TokenSelection
+                                    tokens={tokens}
+                                    selectedToken={selectedToken}
+                                    setSelectedToken={setSelectedToken}
+                                    showAddToken={showAddToken}
+                                    setShowAddToken={setShowAddToken}
+                                    removeToken={removeToken}
+                                    isAuthenticated={isAuthenticated}
+                                />
+
+                                {showAddToken && (
+                                    <AddTokenForm
+                                        newToken={newToken}
+                                        setNewToken={setNewToken}
+                                        addToken={addToken}
+                                    />
+                                )}
+                            </div>
+
+                            <AddressChecker
+                                inputAddress={inputAddress}
+                                setInputAddress={setInputAddress}
+                                handleInputAddressCheck={handleInputAddressCheck}
+                                selectedToken={selectedToken}
                             />
-                        )}
-                        {/*WalletConnection*/}
-                        <WalletConnection />
-                        <AddressChecker
-                            inputAddress={inputAddress}
-                            setInputAddress={setInputAddress}
-                            handleInputAddressCheck={handleInputAddressCheck}
-                            selectedToken={selectedToken}
-                        />
-                        <EligibilityRules
-                            rules={rules}
-                            setRules={setRules}
-                        />
-                        <StatusMessage status={status} />
-                    </CardContent>
-                </Card>
+
+                            {status && (
+                                <StatusMessage status={status} />
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
-        </div>
+        </main>
     );
 };
 
