@@ -94,7 +94,6 @@ export const WalletConnectionInner = () => {
                         <p className="text-sm text-gray-300 break-all">{userAddress}</p>
                     </div>
 
-                    {/*EligibilityCheck*/}
                     <EligibilityCheck selectedToken={selectedToken} />
 
                     <div className="flex gap-2">
@@ -113,7 +112,6 @@ export const WalletConnectionInner = () => {
                     </div>
                 </div>
             )}
-            {/* Sign In Button moved outside of the conditional rendering */}
             <SignInButton />
         </div>
     );

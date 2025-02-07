@@ -7,7 +7,13 @@ import { useEligibilityCheck } from '../hooks/useEligibilityCheck';
 import { type Token } from '../types';
 import { EligibilityRules } from './EligibilityRules';
 
-export const EligibilityCheck = ({ selectedToken }: { selectedToken: Token | null }) => {
+interface EligibilityCheckProps {
+    selectedToken: Token | null;
+}
+
+export const EligibilityCheck: React.FC<EligibilityCheckProps> = ({
+    selectedToken
+}) => {
     const { address: userAddress, isConnected } = useAccount();
     const [isChecking, setIsChecking] = useState(false);
 
@@ -45,8 +51,8 @@ export const EligibilityCheck = ({ selectedToken }: { selectedToken: Token | nul
 
             <Button
                 className={`w-full ${!isConnected || !selectedToken
-                        ? 'bg-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800'
+                    ? 'bg-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800'
                     } text-white shadow-lg shadow-green-500/20`}
                 onClick={handleCheck}
                 disabled={!isConnected || !selectedToken || isChecking || rules.length === 0}
@@ -57,14 +63,14 @@ export const EligibilityCheck = ({ selectedToken }: { selectedToken: Token | nul
                         Checking Eligibility...
                     </div>
                 ) : (
-                    'Check Eligibility'
+                    'Check Connected Wallet'
                 )}
             </Button>
 
             {status && (
                 <div className={`p-4 rounded-lg ${status.includes('eligible')
-                        ? 'bg-green-500/10 border border-green-500/30'
-                        : 'bg-red-500/10 border border-red-500/30'
+                    ? 'bg-green-500/10 border border-green-500/30'
+                    : 'bg-red-500/10 border border-red-500/30'
                     }`}>
                     <p className={`whitespace-pre-line text-sm ${status.includes('eligible') ? 'text-green-400' : 'text-red-400'
                         }`}>

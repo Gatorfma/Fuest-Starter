@@ -35,7 +35,6 @@ const Quest = () => {
         inputAddress,
         setInputAddress,
         status: eligibilityStatus,
-
         checkEligibility,
         updateRules
     } = useEligibilityCheck();
@@ -48,7 +47,6 @@ const Quest = () => {
         e.preventDefault();
         checkEligibility(selectedToken, inputAddress);
     };
-
 
     const status = tokenStatus || eligibilityStatus;
 
@@ -89,6 +87,13 @@ const Quest = () => {
                                     />
                                 )}
                             </div>
+
+                            {selectedToken && (
+                                <EligibilityRules
+                                    rules={rules}
+                                    setRules={setRules}
+                                />
+                            )}
 
                             <AddressChecker
                                 inputAddress={inputAddress}
