@@ -6,13 +6,16 @@ import { TokenSelection } from './_components/Quest/components/TokenSelection';
 import { AddTokenForm } from './_components/Quest/components/AddTokenForm';
 import { WalletConnection } from './_components/Quest/components/WalletConnection';
 import { AddressChecker } from './_components/Quest/components/AddressChecker';
-import { EligibilityRules } from './_components/Quest/components/EligibilityRules';
+import { EligibilityCheck } from './_components/Quest/components/EligibilityCheck';
 import { StatusMessage } from './_components/Quest/components/StatusMessage';
 import { useTokenManagement } from './_components/Quest/hooks/useTokenManagement';
 import { useEligibilityCheck } from './_components/Quest/hooks/useEligibilityCheck';
-
+import { useState } from 'react';
+import { type Rule } from './_components/Quest/types';
 
 const Quest = () => {
+    const [rules, setRules] = useState<Rule[]>([]);
+
     const {
         tokens,
         selectedToken,
@@ -28,16 +31,13 @@ const Quest = () => {
         isAuthenticated
     } = useTokenManagement();
 
-
     const {
-        rules,
-        setRules,
         inputAddress,
         setInputAddress,
         status: eligibilityStatus,
         checkEligibility,
         updateRules
-    } = useEligibilityCheck();
+    } = useEligibilityCheck(rules, setRules);
 
     useEffect(() => {
         updateRules(selectedToken);
@@ -89,18 +89,21 @@ const Quest = () => {
                             </div>
 
                             {selectedToken && (
-                                <EligibilityRules
-                                    rules={rules}
-                                    setRules={setRules}
-                                />
-                            )}
+                                <>
+                                    <EligibilityCheck
+                                        selectedToken={selectedToken}
+                                        rules={rules}
+                                        checkEligibility={checkEligibility}
+                                        updateRules={updateRules}
+                                    />
 
-                            <AddressChecker
-                                inputAddress={inputAddress}
-                                setInputAddress={setInputAddress}
-                                handleInputAddressCheck={handleInputAddressCheck}
-                                selectedToken={selectedToken}
-                            />
+                                    <AddressChecker
+                                        selectedToken={selectedToken}
+                                        rules={rules}
+                                        setRules={setRules}
+                                    />
+                                </>
+                            )}
 
                             {status && (
                                 <StatusMessage status={status} />

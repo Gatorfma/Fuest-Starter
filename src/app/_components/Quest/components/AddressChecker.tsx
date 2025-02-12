@@ -1,27 +1,27 @@
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
-import { type Token } from '../types';
+import { type Token, type Rule } from '../types';
 import { EligibilityRules } from './EligibilityRules';
 import { useEligibilityCheck } from '../hooks/useEligibilityCheck';
 
 interface AddressCheckerProps {
-    inputAddress: string;
-    setInputAddress: React.Dispatch<React.SetStateAction<string>>;
-    handleInputAddressCheck: (e: React.FormEvent<HTMLFormElement>) => void;
     selectedToken: Token | null;
+    rules: Rule[];
+    setRules: React.Dispatch<React.SetStateAction<Rule[]>>;
 }
 
+
 export const AddressChecker: React.FC<AddressCheckerProps> = ({
-    selectedToken
+    selectedToken,
+    rules,
+    setRules
 }) => {
     const {
-        rules,
-        setRules,
         inputAddress,
         setInputAddress,
         checkEligibility,
         status
-    } = useEligibilityCheck();
+    } = useEligibilityCheck(rules, setRules);
 
     const handleInputAddressCheck = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -33,6 +33,12 @@ export const AddressChecker: React.FC<AddressCheckerProps> = ({
     return (
         <div className="space-y-4">
             <h3 className="text-lg font-semibold text-blue-400">Check Any Address</h3>
+
+            <EligibilityRules
+                rules={rules}
+                setRules={setRules}
+            />
+
             <form onSubmit={handleInputAddressCheck} className="space-y-2">
                 <Input
                     type="text"
@@ -44,7 +50,7 @@ export const AddressChecker: React.FC<AddressCheckerProps> = ({
                 <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white shadow-lg shadow-green-500/20"
-                    disabled={!selectedToken || !inputAddress}
+                    disabled={!selectedToken || !inputAddress || rules.length === 0}
                 >
                     Check Address Eligibility
                 </Button>

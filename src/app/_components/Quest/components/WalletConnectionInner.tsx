@@ -7,6 +7,8 @@ import { CookieDebug } from "../../debug/CookieDebug";
 import { useEffect, useRef, useState } from 'react';
 import { EligibilityCheck } from './EligibilityCheck';
 import { useTokenManagement } from '../hooks/useTokenManagement';
+import { useEligibilityCheck } from '../hooks/useEligibilityCheck';
+import { type Rule } from '../types';
 
 export const WalletConnectionInner = () => {
     const { connect, connectors, status: connectStatus } = useConnect();
@@ -14,9 +16,15 @@ export const WalletConnectionInner = () => {
     const { address: userAddress, isConnected } = useAccount();
     const [showWalletList, setShowWalletList] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [rules, setRules] = useState<Rule[]>([]);
 
     const { selectedToken } = useTokenManagement();
 
+    const {
+        status,
+        checkEligibility,
+        updateRules
+    } = useEligibilityCheck(rules, setRules);
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -94,8 +102,12 @@ export const WalletConnectionInner = () => {
                         <p className="text-sm text-gray-300 break-all">{userAddress}</p>
                     </div>
 
-                    <EligibilityCheck selectedToken={selectedToken} />
-
+                    <EligibilityCheck
+                        selectedToken={selectedToken}
+                        rules={rules}
+                        checkEligibility={checkEligibility}
+                        updateRules={updateRules}
+                    />
                     <div className="flex gap-2">
                         <Button
                             className="flex-1 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"

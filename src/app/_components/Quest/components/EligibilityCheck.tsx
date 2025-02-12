@@ -3,27 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { Button } from "../../ui/button";
-import { useEligibilityCheck } from '../hooks/useEligibilityCheck';
-import { type Token } from '../types';
-import { EligibilityRules } from './EligibilityRules';
+import { type Token, type Rule } from '../types';
 
 interface EligibilityCheckProps {
     selectedToken: Token | null;
+    rules: Rule[];
+    checkEligibility: (selectedToken: Token | null, addressToCheck: string) => void;
+    updateRules: (selectedToken: Token | null) => void;
 }
 
 export const EligibilityCheck: React.FC<EligibilityCheckProps> = ({
-    selectedToken
+    selectedToken,
+    rules,
+    checkEligibility,
+    updateRules
 }) => {
     const { address: userAddress, isConnected } = useAccount();
     const [isChecking, setIsChecking] = useState(false);
-
-    const {
-        rules,
-        setRules,
-        status,
-        checkEligibility,
-        updateRules
-    } = useEligibilityCheck();
 
     useEffect(() => {
         if (selectedToken) {
@@ -44,11 +40,6 @@ export const EligibilityCheck: React.FC<EligibilityCheckProps> = ({
 
     return (
         <div className="space-y-4">
-            <EligibilityRules
-                rules={rules}
-                setRules={setRules}
-            />
-
             <Button
                 className={`w-full ${!isConnected || !selectedToken
                     ? 'bg-gray-500 cursor-not-allowed'

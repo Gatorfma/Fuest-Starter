@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { trpc } from '~/utils/trpc';
 import { type Rule, type Token } from '../types';
 import { parseAbiForRules, formatFunctionName } from '../utils/abiUtils';
 
-export const useEligibilityCheck = () => {
-    const [rules, setRules] = useState<Rule[]>([]);
+export const useEligibilityCheck = (
+    rules: Rule[],
+    setRules: React.Dispatch<React.SetStateAction<Rule[]>>
+) => {
     const [inputAddress, setInputAddress] = useState("");
     const [status, setStatus] = useState("");
 
@@ -58,8 +60,6 @@ export const useEligibilityCheck = () => {
     };
 
     return {
-        rules,
-        setRules,
         inputAddress,
         setInputAddress,
         status,
