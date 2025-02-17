@@ -11,7 +11,13 @@ import {
 } from "~/app/_components/ui/dropdown-menu";
 import { useAuth } from '../AuthContext';
 
-export function SignInButton() {
+interface SignInButtonProps {
+    className?: string;
+    onSignIn: () => void;
+}
+
+
+export function SignInButton({ className, onSignIn }: { className?: string; onSignIn: () => void }) {
     const { signedInAddress, setAuthState } = useAuth();
     const { address, chain, isConnected } = useAccount();
     const { signMessageAsync } = useSignMessage();
