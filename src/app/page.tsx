@@ -43,10 +43,6 @@ const Quest = () => {
         updateRules(selectedToken);
     }, [selectedToken]);
 
-    const handleInputAddressCheck = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        checkEligibility(selectedToken, inputAddress);
-    };
 
     const status = tokenStatus || eligibilityStatus;
 

@@ -1,23 +1,26 @@
-import { SignInButton } from '~/app/_components/ui/sign-inButton'
-import { Metadata } from 'next'
-
-export const metadata: Metadata = {
-    title: 'Unauthorized - Please Sign In',
-    description: 'You need to be signed in to access this page',
-}
+import Link from 'next/link'
 
 export default function UnauthorizedPage() {
     return (
-        <main className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-b from-[#000814] via-[#001d3d] to-[#000814]">
-            <div className="w-full max-w-md p-8 space-y-4 bg-black/60 backdrop-blur-xl border border-[#0466c8]/50 rounded-lg shadow-2xl">
-                <h1 className="text-2xl font-bold text-center text-red-500">
-                    401 - Unauthorized
-                </h1>
-                <p className="text-center text-gray-300">
-                    Please log in to access this page.
-                </p>
-                <SignInButton />
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
+                <div className="text-center">
+                    <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+                        Unauthorized Access
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-600">
+                        Please sign in to access this page
+                    </p>
+                </div>
+                <div className="mt-8 space-y-4">
+                    <Link
+                        href="/"
+                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        Return to Home
+                    </Link>
+                </div>
             </div>
-        </main>
+        </div>
     )
 }
