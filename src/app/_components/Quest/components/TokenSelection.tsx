@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { Button } from "../../../../components/ui/button";
 import { type Token } from '../types';
+import { usePathname } from 'next/navigation';
 
 interface TokenSelectionProps {
     tokens: Token[];
@@ -21,6 +22,9 @@ export const TokenSelection: React.FC<TokenSelectionProps> = ({
     removeToken,
     isAuthenticated
 }) => {
+    const pathname = usePathname();
+    const isTokensPage = pathname === '/tokens';
+
     return (
         <div className="space-y-4">
             <h3 className="text-lg font-semibold text-blue-400">Token Selection</h3>
@@ -48,7 +52,7 @@ export const TokenSelection: React.FC<TokenSelectionProps> = ({
                             ))}
                         </SelectContent>
                     </Select>
-                    {selectedToken && (
+                    {isTokensPage && selectedToken && (
                         <Button
                             className="w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white shadow-lg shadow-red-500/20"
                             onClick={() => removeToken(selectedToken.id)}
@@ -59,18 +63,20 @@ export const TokenSelection: React.FC<TokenSelectionProps> = ({
                     )}
                 </>
             )}
-            <Button
-                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20"
-                onClick={() => setShowAddToken(!showAddToken)}
-                disabled={!isAuthenticated}
-            >
-                {!isAuthenticated
-                    ? "Sign in to Add Token"
-                    : showAddToken
-                        ? "Cancel"
-                        : "Add New Token"
-                }
-            </Button>
+            {isTokensPage && (
+                <Button
+                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20"
+                    onClick={() => setShowAddToken(!showAddToken)}
+                    disabled={!isAuthenticated}
+                >
+                    {!isAuthenticated
+                        ? "Sign in to Add Token"
+                        : showAddToken
+                            ? "Cancel"
+                            : "Add New Token"
+                    }
+                </Button>
+            )}
         </div>
     );
 };
