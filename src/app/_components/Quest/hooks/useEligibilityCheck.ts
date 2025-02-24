@@ -13,14 +13,14 @@ export const useEligibilityCheck = (
     const checkEligibilityMutation = trpc.eligibility.checkEligibility.useMutation({
         onSuccess: (data) => {
             if (data.success) {
-                setStatus(`Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
+                setStatus(`✓ Address ${inputAddress} is eligible for ${data.tokenName} token (${data.tokenAddress})!`);
             } else {
-                let failureReason = `Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
+                let failureReason = `✗ Address ${inputAddress} is not eligible for ${data.tokenName} token (${data.tokenAddress}) due to:\n`;
                 data.failedRules.forEach((result) => {
                     if (result.error) {
-                        failureReason += `- ${result.rule.displayName}: ${result.error}\n`;
+                        failureReason += `• ${result.rule.displayName}: ${result.error}\n`;
                     } else {
-                        failureReason += `- ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
+                        failureReason += `• ${result.rule.displayName} rule not met (requires ${result.rule.operator} ${result.rule.value}, has ${result.value})\n`;
                     }
                 });
                 setStatus(failureReason);

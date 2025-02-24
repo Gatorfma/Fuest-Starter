@@ -3,13 +3,13 @@ import { Button } from "../../../../components/ui/button";
 import { type Token, type Rule } from '../types';
 import { EligibilityRules } from './EligibilityRules';
 import { useEligibilityCheck } from '../hooks/useEligibilityCheck';
+import { StatusMessage } from './StatusMessage';
 
 interface AddressCheckerProps {
     selectedToken: Token | null;
     rules: Rule[];
     setRules: React.Dispatch<React.SetStateAction<Rule[]>>;
 }
-
 
 export const AddressChecker: React.FC<AddressCheckerProps> = ({
     selectedToken,
@@ -56,17 +56,7 @@ export const AddressChecker: React.FC<AddressCheckerProps> = ({
                 </Button>
             </form>
 
-            {status && (
-                <div className={`p-4 rounded-lg ${status.includes('eligible')
-                    ? 'bg-green-500/10 border border-green-500/30'
-                    : 'bg-red-500/10 border border-red-500/30'
-                    }`}>
-                    <p className={`whitespace-pre-line text-sm ${status.includes('eligible') ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                        {status}
-                    </p>
-                </div>
-            )}
+            {status && <StatusMessage status={status} />}
         </div>
     );
 };
