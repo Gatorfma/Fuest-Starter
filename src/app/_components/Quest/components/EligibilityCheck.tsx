@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { Button } from "../../ui/button";
+import { Button } from "../../../../components/ui/button";
 import { type Token, type Rule } from '../types';
 
 interface EligibilityCheckProps {

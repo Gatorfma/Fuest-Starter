@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { Button } from "../../ui/button";
+import { Button } from "../../../../components/ui/button";
 import { type Token } from '../types';
 
 interface TokenSelectionProps {

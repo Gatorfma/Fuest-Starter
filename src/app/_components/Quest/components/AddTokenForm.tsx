@@ -1,5 +1,5 @@
 import { Input } from "../../ui/input";
-import { Button } from "../../ui/button";
+import { Button } from "../../../../components/ui/button";
 import { type Token } from '../types';
 
 interface AddTokenFormProps {
