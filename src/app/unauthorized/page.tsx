@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "../_components/ui/card";
-import { Button } from "../_components/ui/button";
+import { Button } from "../../components/ui/button";
 import { useRouter } from 'next/navigation';
 
 export default function UnauthorizedPage() {
@@ -25,7 +25,8 @@ export default function UnauthorizedPage() {
                             <div className="flex justify-center">
                                 <Button
                                     onClick={() => router.push('/')}
-                                    className="bg-blue-500/50 hover:bg-blue-600"
+                                    variant="default"
+                                    className="hover:bg-blue-600"
                                 >
                                     Go to Connect Page
                                 </Button>

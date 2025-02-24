@@ -3,6 +3,7 @@ import { Providers } from './providers'
 import { SessionProvider } from './_components/SessionProvider'
 import { verifyJWT } from '~/server/utils/jwt'
 import { getServerAuthSession } from '~/server/auth'
+import './globals.css'
 
 const publicPaths = ['/unauthorized']
 

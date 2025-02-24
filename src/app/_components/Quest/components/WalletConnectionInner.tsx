@@ -1,7 +1,7 @@
 "use client";
 
 import { useConnect, useDisconnect, useAccount } from 'wagmi';
-import { Button } from "../../ui/button";
+import { Button } from "../../../../components/ui/button";
 import { SignInButton } from "../../ui/sign-inButton";
 import { CookieDebug } from "../../debug/CookieDebug";
 import { useEffect, useRef, useState } from 'react';

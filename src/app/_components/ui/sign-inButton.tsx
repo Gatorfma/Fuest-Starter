@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { generateNonce } from 'siwe';
 import { api } from "~/trpc/react";
-import { Button } from "~/app/_components/ui/button";
+import { Button } from "../../../components/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,

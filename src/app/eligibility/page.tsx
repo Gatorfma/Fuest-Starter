@@ -11,6 +11,7 @@ import { useEligibilityCheck } from '../_components/Quest/hooks/useEligibilityCh
 import { type Rule } from '../_components/Quest/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../_components/AuthContext';
+import { Button } from "../../components/ui/button";
 
 
 const EligibilityPage = () => {
@@ -58,13 +59,13 @@ const EligibilityPage = () => {
     const TabNavigation = () => (
         <div className="border-b border-blue-500/30 mb-4">
             <div className="flex">
-                <button
+                <Button
                     onClick={() => handleNavigation('/')}
                     className="px-4 py-2 w-1/3 text-sm font-medium text-gray-400 hover:text-blue-300 hover:border-b-2 hover:border-blue-300"
                 >
                     Connect
-                </button>
-                <button
+                </Button>
+                <Button
                     onClick={() => handleNavigation('/tokens')}
                     className={`px-4 py-2 w-1/3 text-sm font-medium ${pathname === '/tokens'
                         ? 'text-blue-400 border-b-2 border-blue-400'
@@ -72,8 +73,8 @@ const EligibilityPage = () => {
                         }`}
                 >
                     Tokens
-                </button>
-                <button
+                </Button>
+                <Button
                     onClick={() => handleNavigation('/eligibility')}
                     className={`px-4 py-2 w-1/3 text-sm font-medium ${pathname === '/eligibility'
                         ? 'text-blue-400 border-b-2 border-blue-400'
@@ -81,7 +82,7 @@ const EligibilityPage = () => {
                         }`}
                 >
                     Eligibility
-                </button>
+                </Button>
             </div>
         </div>
     );
